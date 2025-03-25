@@ -1,6 +1,6 @@
 # athlete_alumni
 
-A new Flutter project.
+AthleteAlumni is a networking platform connecting college athletes with alumni from their schools and sports to build professional networks and find mentorship opportunities. This MVP plan focuses on delivering core functionality while deferring more complex features.
 
 ## Getting Started
 
