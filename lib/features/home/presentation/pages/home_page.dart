@@ -56,10 +56,10 @@ class HomePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 32),
-            ElevatedButton(
+                ElevatedButton(
               onPressed: () {},
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.white,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
                 foregroundColor: AppColors.primary,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -71,9 +71,9 @@ class HomePage extends StatelessWidget {
                 style: TextStyle(fontSize: 18),
               ),
             ),
-          ],
-        ),
-      ),
+                    ],
+                  ),
+                ),
     );
   }
 

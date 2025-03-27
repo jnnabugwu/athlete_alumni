@@ -3,6 +3,7 @@ class RouteConstants {
   static const String home = '/';
   static const String login = '/login';
   static const String register = '/register';
+  static const String passwordReset = '/password-reset';
   static const String profile = '/profile';
   static const String athletes = '/athletes';
   static const String forums = '/forums';

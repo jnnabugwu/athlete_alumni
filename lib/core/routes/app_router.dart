@@ -1,113 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'route_constants.dart';
+import 'package:athlete_alumni/core/di/injection.dart';
+import 'package:athlete_alumni/features/auth/presentation/bloc/auth_bloc.dart';
+
+import 'package:athlete_alumni/core/routes/route_constants.dart';
 
 // Import your screens here
-import 'package:athlete_alumni/features/home/presentation/pages/home_page.dart';    
+// import 'package:athlete_alumni/features/profile/presentation/pages/profile_page.dart';
+// import 'package:athlete_alumni/features/athletes/presentation/pages/athletes_page.dart';
+// import 'package:athlete_alumni/features/athletes/presentation/pages/athlete_detail_page.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/login_page.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/register_page.dart';
-import 'package:athlete_alumni/features/profile/presentation/pages/profile_page.dart';
-import 'package:athlete_alumni/features/athletes/presentation/pages/athletes_page.dart';
-import 'package:athlete_alumni/features/athletes/presentation/pages/athlete_detail_page.dart';
+import 'package:athlete_alumni/features/home/presentation/pages/home_page.dart';
 
-class AppRouter {
-  GoRouter get router => _router;
-
-  final _router = GoRouter(
-    initialLocation: RouteConstants.home,
-    debugLogDiagnostics: true,
-    routes: <RouteBase>[
-      GoRoute(
-        path: RouteConstants.home,
-        name: 'home',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const HomePage(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
+final appRouter = GoRouter(
+  routes: [
+    GoRoute(
+      path: RouteConstants.home,
+      builder: (context, state) => BlocProvider(
+        create: (_) => sl<AuthBloc>(),
+        child: const HomePage(),
       ),
-      GoRoute(
-        path: RouteConstants.login,
-        name: 'login',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const LoginPage(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      ),
-      GoRoute(
-        path: RouteConstants.register,
-        name: 'register',
-        pageBuilder: (context, state) => CustomTransitionPage(
-          key: state.pageKey,
-          child: const RegisterPage(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            return FadeTransition(opacity: animation, child: child);
-          },
-        ),
-      ),
-      // GoRoute(
-      //   path: RouteConstants.profile,
-      //   name: 'profile',
-      //   pageBuilder: (context, state) => CustomTransitionPage(
-      //     key: state.pageKey,
-      //     child: const ProfilePage(),
-      //     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      //       return FadeTransition(opacity: animation, child: child);
-      //     },
-      //   ),
-      // ),
-      // GoRoute(
-      //   path: RouteConstants.athletes,
-      //   name: 'athletes',
-      //   pageBuilder: (context, state) => CustomTransitionPage(
-      //     key: state.pageKey,
-      //     child: const AthletesPage(),
-      //     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      //       return FadeTransition(opacity: animation, child: child);
-      //     },
-      //   ),
-      // ),
-      // GoRoute(
-      //   path: '${RouteConstants.athletes}/:id',
-      //   name: 'athleteDetail',
-      //   pageBuilder: (context, state) {
-      //     final athleteId = state.pathParameters['id']!;
-      //     return CustomTransitionPage(
-      //       key: state.pageKey,
-      //       child: AthleteDetailPage(athleteId: athleteId),
-      //       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      //         return FadeTransition(opacity: animation, child: child);
-      //       },
-      //     );
-      //   },
-      // ),
-      // GoRoute(
-      //   path: RouteConstants.forums,
-      //   name: 'forums',
-      //   pageBuilder: (context, state) => CustomTransitionPage(
-      //     key: state.pageKey,
-      //     child: const ForumsPage(),
-      //     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      //       return FadeTransition(opacity: animation, child: child);
-      //     },
-      //   ),
-      // ),
-    ],
-    errorPageBuilder: (context, state) => CustomTransitionPage(
-      key: state.pageKey,
-      child: Scaffold(
-        body: Center(
-          child: Text('Error: Page ${state.uri.path} not found'),
-        ),
-      ),
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(opacity: animation, child: child);
-      },
     ),
-  );
-}
+    GoRoute(
+      path: RouteConstants.login,
+      builder: (context, state) => BlocProvider(
+        create: (_) => sl<AuthBloc>(),
+        child: const LoginPage(),
+      ),
+    ),
+    GoRoute(
+      path: RouteConstants.register,
+      builder: (context, state) => BlocProvider(
+        create: (_) => sl<AuthBloc>(),
+        child: const RegisterPage(),
+      ),
+    ),
+  ],
+  initialLocation: RouteConstants.home,
+  errorBuilder: (context, state) => const Scaffold(
+    body: Center(
+      child: Text('Page not found'),
+    ),
+  ),
+);

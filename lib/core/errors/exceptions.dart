@@ -19,3 +19,12 @@ class CacheException extends Equatable implements Exception {
   @override
   List<dynamic> get props => [message, statusCode];
 }
+
+class AuthException implements Exception {
+  final String message;
+
+  const AuthException(this.message);
+
+  @override
+  String toString() => message;
+} 
