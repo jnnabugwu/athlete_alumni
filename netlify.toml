@@ -1,15 +1,18 @@
 [build]
-  command = """
-    git clone https://github.com/flutter/flutter.git --branch 3.16.0
-    export PATH="$PATH:`pwd`/flutter/bin"
-    flutter precache
-    flutter config --no-analytics
-    flutter pub get
-    flutter build web --release
-    """
+  command = "flutter build web --release"
   publish = "build/web"
+
+[build.environment]
+  FLUTTER_VERSION = "3.16.0"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200 
+
+  [[plugins]]
+
+  package = "netlify-plugin-flutter"
+
+   [plugins.inputs]
+    channel = "stable"
