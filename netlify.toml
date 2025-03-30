@@ -3,7 +3,6 @@
   publish = "build/web"
 
 [build.environment]
-  FLUTTER_VERSION = "3.16.0"
   PYTHON_VERSION = "3.12"
 
 [[redirects]]
