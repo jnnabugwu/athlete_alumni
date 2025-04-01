@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/routes/route_constants.dart';
+import '../../../../core/router/route_constants.dart';
 import '../../domain/entities/athlete.dart';
 
 class FeaturedAthletesWidget extends StatelessWidget {
@@ -206,7 +206,10 @@ class AthleteCard extends StatelessWidget {
                       const SizedBox(width: 8),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: () => GoRouter.of(context).go('${RouteConstants.athletes}/${athlete.id}'),
+                          onPressed: () {
+                            // Use direct string for now to avoid undefined reference
+                            GoRouter.of(context).go('/athletes/${athlete.id}');
+                          },
                           child: const Text('View Profile'),
                         ),
                       ),

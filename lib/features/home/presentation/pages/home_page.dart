@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/router/route_constants.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final bool isDevBypass = GoRouterState.of(context).extra != null &&
+        (GoRouterState.of(context).extra as Map?)?.containsKey('devBypass') == true &&
+        (GoRouterState.of(context).extra as Map)['devBypass'] == true;
+
     return Scaffold(
       appBar: const CustomAppBar(),
       body: SingleChildScrollView(
@@ -14,6 +20,7 @@ class HomePage extends StatelessWidget {
           children: [
             _buildHeroSection(context),
             _buildFeaturesSection(context),
+            if (isDevBypass) _buildDevToolsPanel(context),
           ],
         ),
       ),
@@ -151,6 +158,70 @@ class HomePage extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDevToolsPanel(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade100,
+        border: Border.all(color: Colors.amber.shade800),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.developer_mode, color: Colors.amber.shade800),
+              const SizedBox(width: 8),
+              Text(
+                'Developer Tools',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.amber.shade800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Use these buttons to navigate to different routes for testing:'),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              ElevatedButton.icon(
+                icon: const Icon(Icons.person),
+                label: const Text('Profile Page'),
+                onPressed: () => context.go(
+                  '/profile/mock-id-123',
+                  extra: {'devBypass': true},
+                ),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.people),
+                label: const Text('Athletes List'),
+                onPressed: () => context.go(
+                  RouteConstants.mentors,
+                  extra: {'devBypass': true},
+                ),
+              ),
+              ElevatedButton.icon(
+                icon: const Icon(Icons.message),
+                label: const Text('Messages'),
+                onPressed: () => context.go(
+                  RouteConstants.messages,
+                  extra: {'devBypass': true},
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

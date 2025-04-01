@@ -1,29 +1,26 @@
 import 'package:equatable/equatable.dart';
 
-import 'exceptions.dart';
-
+/// Base class for all failures in the application
 abstract class Failure extends Equatable {
-  Failure({required this.message, required this.statusCode})
-      : assert(statusCode is String || statusCode is int,
-            'StatusCode cannot be a ${statusCode.runtimeType} ');
-
   final String message;
-  final dynamic statusCode;
 
-  String get errorMessage =>
-      '$statusCode${statusCode is String ? '' : ' Error'}: $message';
+  const Failure({required this.message});
 
   @override
-  List<dynamic> get props => [message, statusCode];
+  List<Object> get props => [message];
 }
 
-class CacheFailure extends Failure {
-  CacheFailure({required super.message, required super.statusCode});
-}
-
+/// Failure caused by a server error
 class ServerFailure extends Failure {
-  ServerFailure({required super.message, required super.statusCode});
+  const ServerFailure({required String message}) : super(message: message);
+}
 
-  ServerFailure.fromException(ServerException exception)
-      : this(message: exception.message, statusCode: exception.statusCode);
+/// Failure caused by network connectivity issues
+class NetworkFailure extends Failure {
+  const NetworkFailure({required String message}) : super(message: message);
+}
+
+/// Failure caused by cache-related issues
+class CacheFailure extends Failure {
+  const CacheFailure({required String message}) : super(message: message);
 }

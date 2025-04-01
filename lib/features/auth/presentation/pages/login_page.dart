@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/routes/route_constants.dart';
+import '../../../../core/router/route_constants.dart';
 import '../../../../core/models/athlete.dart';
 import '../bloc/auth_bloc.dart';
 
@@ -290,6 +290,37 @@ class _LoginPageState extends State<LoginPage> {
                       color: Colors.white,
                     ),
                   ),
+          ),
+          // Add dev login button
+          const SizedBox(height: 12),
+          Divider(color: Colors.grey[300]),
+          const SizedBox(height: 12),
+          OutlinedButton(
+            onPressed: () {
+              print("Dev login clicked - direct navigation bypass");
+              try {
+                // Skip the entire auth flow and navigate directly to home
+                // Pass devBypass parameter to let the router know this is a development bypass
+                context.go(RouteConstants.home, extra: {'devBypass': true});
+              } catch (e) {
+                print("Error in dev login bypass: $e");
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              side: BorderSide(color: Colors.grey[400]!),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.developer_mode, size: 20),
+                SizedBox(width: 8),
+                Text('Dev Login (Direct Bypass)'),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           Row(

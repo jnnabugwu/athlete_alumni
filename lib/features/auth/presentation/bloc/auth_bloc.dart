@@ -5,6 +5,7 @@ import 'package:athlete_alumni/core/utils/web_storage.dart';
 import 'package:athlete_alumni/features/auth/domain/repositories/auth_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
+import 'dart:math' as math;
 part 'auth_event.dart';
 part 'auth_state.dart';
 
@@ -61,17 +62,31 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   Future<void> _persistState(AuthState state) async {
+    print("AuthBloc: Persisting state: ${state.status}");
     try {
       final stateMap = {
         'status': state.status.toString(),
         'errorMessage': state.errorMessage,
       };
+      print("AuthBloc: Saving auth state map: $stateMap");
       await WebStorage.saveAuthState(json.encode(stateMap));
 
       if (state.athlete != null) {
-        await WebStorage.saveAthleteData(json.encode(state.athlete!.toJson()));
+        print("AuthBloc: Preparing to save athlete data: ${state.athlete}");
+        try {
+          final athleteJson = json.encode(state.athlete!.toJson());
+          print("AuthBloc: Athlete JSON encoded: ${athleteJson.substring(0, math.min(100, athleteJson.length))}...");
+          await WebStorage.saveAthleteData(athleteJson);
+          print("AuthBloc: Athlete data saved successfully");
+        } catch (jsonError) {
+          print("AuthBloc: Error encoding athlete to JSON: $jsonError");
+          throw jsonError;
+        }
+      } else {
+        print("AuthBloc: No athlete data to save");
       }
     } catch (e) {
+      print("AuthBloc: Error in _persistState: $e");
       add(AuthErrorOccurred('Failed to persist state: ${e.toString()}'));
     }
   }
@@ -119,12 +134,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthSessionUpdated event,
     Emitter<AuthState> emit,
   ) async {
-    final newState = state.copyWith(
-      status: AuthStatus.authenticated,
-      athlete: event.athlete,
-    );
-    emit(newState);
-    await _persistState(newState);
+    print("AuthBloc: Handling AuthSessionUpdated event");
+    try {
+      print("AuthBloc: Creating new state with athlete: ${event.athlete}");
+      final newState = state.copyWith(
+        status: AuthStatus.authenticated,
+        athlete: event.athlete,
+      );
+      print("AuthBloc: Emitting new state with status: ${newState.status}");
+      emit(newState);
+      print("AuthBloc: New state emitted, about to persist state");
+      await _persistState(newState);
+      print("AuthBloc: State persisted successfully");
+    } catch (e) {
+      print("AuthBloc: Error in _onAuthSessionUpdated: $e");
+      add(AuthErrorOccurred("Failed to update session: ${e.toString()}"));
+    }
   }
 
   void _onAuthErrorOccurred(
