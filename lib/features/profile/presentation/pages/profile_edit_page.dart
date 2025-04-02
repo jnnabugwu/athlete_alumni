@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'dart:io';
 import '../../../../core/models/athlete.dart';
 
@@ -39,8 +38,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     // Initialize controllers with athlete data
     _nameController = TextEditingController(text: widget.athlete.name);
     _emailController = TextEditingController(text: widget.athlete.email);
-    _majorController = TextEditingController(text: widget.athlete.major);
-    _careerController = TextEditingController(text: widget.athlete.career);
+    _majorController = TextEditingController(text: widget.athlete.major.displayName);
+    _careerController = TextEditingController(text: widget.athlete.career.displayName);
     _universityController = TextEditingController(text: widget.athlete.university ?? '');
     _sportController = TextEditingController(text: widget.athlete.sport ?? '');
     _athleteStatus = widget.athlete.status;
@@ -141,8 +140,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         name: _nameController.text,
         email: _emailController.text,
         status: _athleteStatus,
-        major: _majorController.text,
-        career: _careerController.text,
+        //TODO: major and career should be dropdowns in the UI
+        major: AthleteMajor.fromString(_majorController.text),
+        career: AthleteCareer.fromString(_careerController.text),
         university: _universityController.text.isEmpty ? null : _universityController.text,
         sport: _sportController.text.isEmpty ? null : _sportController.text,
         achievements: _achievements.isEmpty ? null : _achievements,

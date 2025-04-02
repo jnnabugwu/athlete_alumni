@@ -39,3 +39,13 @@ class UploadProfileImageEvent extends ProfileEvent {
   @override
   List<Object> get props => [athleteId, imageBytes, fileName];
 }
+
+/// Event to directly load a mock profile for development purposes
+class MockProfileLoadedEvent extends ProfileEvent {
+  final Athlete athlete;
+  
+  const MockProfileLoadedEvent(this.athlete);
+
+  @override
+  List<Object> get props => [athlete];
+}

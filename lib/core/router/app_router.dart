@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'package:athlete_alumni/features/athletes/presentation/bloc/athlete_bloc.dart';
+import 'package:athlete_alumni/features/athletes/presentation/bloc/filter_athletes_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -19,6 +21,7 @@ import 'package:athlete_alumni/core/router/route_constants.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/login_page.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/register_page.dart';
 import 'package:athlete_alumni/features/home/presentation/pages/home_page.dart';
+import 'package:athlete_alumni/features/athletes/presentation/pages/athletes_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -132,6 +135,29 @@ final appRouter = GoRouter(
         }
         
         return RouteConstants.login;
+      },
+    ),
+
+    // Athletes route
+    GoRoute(
+      path: RouteConstants.athletes,
+      builder: (context, state) {
+        final bool isDevBypass = state.extra != null && 
+                               state.extra is Map && 
+                               (state.extra as Map).containsKey('devBypass');
+        
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (_) => sl<AthleteBloc>(),
+            ),
+            BlocProvider(
+              create: (_) => sl<FilterAthletesBloc>(),
+            ),
+            // Add any other BLoCs needed by the AthletesPage
+          ],
+          child: const AthletesPage(),
+        );
       },
     ),
   ],

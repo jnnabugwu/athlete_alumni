@@ -199,7 +199,7 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.person),
                 label: const Text('Profile Page'),
                 onPressed: () => context.go(
-                  '/profile/mock-id-123',
+                  RouteConstants.myProfile,
                   extra: {'devBypass': true},
                 ),
               ),
@@ -207,7 +207,7 @@ class HomePage extends StatelessWidget {
                 icon: const Icon(Icons.people),
                 label: const Text('Athletes List'),
                 onPressed: () => context.go(
-                  RouteConstants.mentors,
+                  RouteConstants.athletes,
                   extra: {'devBypass': true},
                 ),
               ),

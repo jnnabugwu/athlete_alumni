@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'package:flutter/foundation.dart';
 import '../core/models/athlete.dart';
 
 /// Utility class to generate random athlete data for testing purposes
@@ -22,18 +21,33 @@ class AthleteGenerator {
     'White', 'Harris', 'Sanchez', 'Clark', 'Lewis', 'Robinson', 'Walker', 'Young'
   ];
   
-  static const List<String> _majors = [
-    'Computer Science', 'Business Administration', 'Psychology', 'Biology',
-    'Engineering', 'Communications', 'Economics', 'Political Science',
-    'Marketing', 'Finance', 'Nursing', 'English', 'Chemistry', 'Education',
-    'Sociology', 'Mathematics', 'History', 'Art', 'Physics', 'Journalism'
+  // Replace string majors with enum values
+  static final List<AthleteMajor> _majors = [
+    AthleteMajor.business,
+    AthleteMajor.computerScience,
+    AthleteMajor.psychology,
+    AthleteMajor.biology,
+    AthleteMajor.engineering,
+    AthleteMajor.communications,
+    AthleteMajor.education,
+    AthleteMajor.politicalScience,
+    AthleteMajor.economics,
+    AthleteMajor.other,
   ];
   
-  static const List<String> _careers = [
-    'Software Engineer', 'Marketing Manager', 'Teacher', 'Doctor', 'Lawyer',
-    'Financial Analyst', 'Project Manager', 'Nurse', 'Accountant', 'Sales Representative',
-    'Graphic Designer', 'Human Resources Manager', 'Chef', 'Engineer', 'Consultant',
-    'Researcher', 'Entrepreneur', 'Professor', 'Journalist', 'Physical Therapist'
+  // Replace string careers with enum values
+  static final List<AthleteCareer> _careers = [
+    AthleteCareer.softwareEngineer,
+    AthleteCareer.businessAnalyst,
+    AthleteCareer.marketing,
+    AthleteCareer.sales,
+    AthleteCareer.medicine,
+    AthleteCareer.engineering,
+    AthleteCareer.mediaProduction,
+    AthleteCareer.humanResources,
+    AthleteCareer.finance,
+    AthleteCareer.other,
+    AthleteCareer.inSchool,
   ];
   
   static const List<String> _universities = [
@@ -102,13 +116,18 @@ class AthleteGenerator {
       final String gender = _random.nextBool() ? 'men' : 'women';
       final String profileImageUrl = 'https://randomuser.me/api/portraits/$gender/$avatarId.jpg';
       
+      // Set career based on status - if current athlete, set to inSchool
+      final AthleteCareer career = status == AthleteStatus.current 
+          ? AthleteCareer.inSchool 
+          : _careers[_random.nextInt(_careers.length)];
+      
       athletes.add(Athlete(
         id: 'ath-${_generateRandomId()}',
         name: name,
         email: email,
         status: status,
         major: _majors[_random.nextInt(_majors.length)],
-        career: _careers[_random.nextInt(_careers.length)],
+        career: career,
         profileImageUrl: profileImageUrl,
         university: _universities[_random.nextInt(_universities.length)],
         sport: _sports[_random.nextInt(_sports.length)],

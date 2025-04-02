@@ -24,3 +24,13 @@ class NetworkFailure extends Failure {
 class CacheFailure extends Failure {
   const CacheFailure({required String message}) : super(message: message);
 }
+
+/// Failure that occurs when data is not found
+class NotFoundFailure extends Failure {
+  const NotFoundFailure({required String message}) : super(message: message);
+}
+
+/// Failure that occurs for general, unexpected errors
+class GeneralFailure extends Failure {
+  const GeneralFailure({required String message}) : super(message: message);
+}

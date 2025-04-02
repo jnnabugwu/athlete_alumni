@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../../../core/models/athlete.dart';
 import '../../../../core/di/injection.dart';
+import '../../../../core/router/route_constants.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_page.dart';
-import '../bloc/edit_profile_bloc.dart';
-import '../screens/edit_profile_screen.dart';
+
 
 class ProfileScreen extends StatefulWidget {
-  final String athleteId;
+  final String? athleteId;
   final bool isOwnProfile;
   final bool isDevMode;
   
   const ProfileScreen({
     Key? key,
-    required this.athleteId,
-    required this.isOwnProfile,
+    this.athleteId,
+    this.isOwnProfile = false,
     this.isDevMode = false,
   }) : super(key: key);
 
@@ -24,46 +26,43 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  late final ProfileBloc _profileBloc;
+  
   @override
   void initState() {
     super.initState();
-    
-    print("ProfileScreen.initState: isDevMode = ${widget.isDevMode}, athleteId = ${widget.athleteId}");
+    _profileBloc = sl<ProfileBloc>();
     
     if (widget.isDevMode) {
-      print("ProfileScreen: Creating mock athlete for development mode");
-      // Create mock athlete data for development mode
-      final mockAthlete = Athlete(
+      // Use mock data for development
+      const mockAthlete = Athlete(
         id: 'mock-id-123',
-        name: 'Dev Test User',
-        email: 'dev@example.com',
-        status: AthleteStatus.current,
-        major: 'Computer Science',
-        career: 'Software Developer',
-        profileImageUrl: 'https://via.placeholder.com/150',
+        name: 'Dev Test Athlete',
+        email: 'dev@test.com',
+        status: AthleteStatus.former,
+        major: AthleteMajor.computerScience,
+        career: AthleteCareer.softwareEngineer,
         university: 'Dev University',
-        sport: 'Basketball',
-        achievements: ['Created with DevBypass', 'Testing Mode'],
-        graduationYear: DateTime(2023),
+        sport: 'Swimming',
+        achievements: ['NCAA Championship', 'All-American', 'Team Captain'],
+        profileImageUrl: 'https://placehold.co/300x300',
       );
       
-      print("ProfileScreen: Mock athlete created. Now will skip GetProfileEvent and directly emit ProfileLoaded");
-      
-      // Skip the network request altogether for dev mode
-      // context.read<ProfileBloc>().add(GetProfileEvent(widget.athleteId));
-      
-      // Directly emit the ProfileLoaded state with the mock athlete
-      Future.microtask(() {
-        if (mounted) {
-          print("ProfileScreen: Emitting mock athlete to ProfileBloc");
-          context.read<ProfileBloc>().emit(ProfileLoaded(mockAthlete));
-        }
-      });
+      _profileBloc.add(const MockProfileLoadedEvent(mockAthlete));
     } else {
-      // Normal flow - fetch the real profile
-      print("ProfileScreen: Normal flow - fetching real profile for ID: ${widget.athleteId}");
-      context.read<ProfileBloc>().add(GetProfileEvent(widget.athleteId));
+      // Get real profile data
+      _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
     }
+  }
+  
+  @override
+  void dispose() {
+    //_profileBloc.close();
+    super.dispose();
+  }
+  
+  void _navigateToEditProfile() {
+    context.push(RouteConstants.editProfile);
   }
 
   @override
@@ -115,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             athlete: state.athlete,
             isOwnProfile: widget.isOwnProfile,
             onEditPressed: widget.isOwnProfile 
-              ? () => _navigateToEditProfile(context, state.athlete)
+              ? () => _navigateToEditProfile()
               : null,
           );
         } else if (state is ProfileError) {
@@ -141,19 +140,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           name: 'Dev Test User',
                           email: 'dev@example.com',
                           status: AthleteStatus.current,
-                          major: 'Computer Science',
-                          career: 'Software Developer',
+                          major: AthleteMajor.computerScience,
+                          career: AthleteCareer.softwareEngineer,
                           profileImageUrl: 'https://via.placeholder.com/150',
                           university: 'Dev University',
                           sport: 'Basketball',
                           achievements: ['Created with DevBypass', 'Testing Mode'],
                           graduationYear: DateTime(2023),
                         );
-                        context.read<ProfileBloc>().emit(ProfileLoaded(mockAthlete));
+                        _profileBloc.emit(ProfileLoaded(mockAthlete));
                       } else {
                         // Retry loading profile
                         print("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
-                        context.read<ProfileBloc>().add(GetProfileEvent(widget.athleteId));
+                        _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
                       }
                     },
                     child: const Text('Try Again'),
@@ -172,18 +171,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         );
       },
-    );
-  }
-
-  void _navigateToEditProfile(BuildContext context, Athlete athlete) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (context) => BlocProvider(
-          create: (context) => sl<EditProfileBloc>()
-            ..add(InitializeEditProfileEvent(athlete)),
-          child: EditProfileScreen(athlete: athlete),
-        ),
-      ),
     );
   }
 } 

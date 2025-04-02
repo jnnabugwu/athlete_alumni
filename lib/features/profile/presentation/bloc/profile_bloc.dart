@@ -22,6 +22,7 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
     on<GetProfileEvent>(_onGetProfile);
     on<UpdateProfileEvent>(_onUpdateProfile);
     on<UploadProfileImageEvent>(_onUploadProfileImage);
+    on<MockProfileLoadedEvent>(_onMockProfileLoaded);
   }
   
   Future<void> _onGetProfile(GetProfileEvent event, Emitter<ProfileState> emit) async {
@@ -61,5 +62,10 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       (failure) => emit(ProfileImageUploadFailure(failure.message)),
       (imageUrl) => emit(ProfileImageUploadSuccess(imageUrl)),
     );
+  }
+  
+  // Handle mock profile loaded event for development
+  void _onMockProfileLoaded(MockProfileLoadedEvent event, Emitter<ProfileState> emit) {
+    emit(ProfileLoaded(event.athlete));
   }
 }

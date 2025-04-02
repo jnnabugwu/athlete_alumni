@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:math';
 import '../../../../core/models/athlete.dart';
 
 /// Class to manage mock profile data with browser storage persistence
@@ -8,14 +9,15 @@ class MockProfileData {
   
   /// Get the initial list of athletes
   static List<Athlete> getInitialAthletes() {
-    return [
+    // Base sample data
+    final sampleAthletes = [
       Athlete(
         id: '1',
         name: 'Michael Johnson',
         email: 'michael.johnson@example.com',
         status: AthleteStatus.current,
-        major: 'Computer Science',
-        career: '',
+        major: AthleteMajor.engineering,
+        career: AthleteCareer.softwareEngineer,
         sport: 'Basketball',
         university: 'State University',
         profileImageUrl: 'https://i.pravatar.cc/150?img=1',
@@ -27,8 +29,8 @@ class MockProfileData {
         name: 'Sarah Williams',
         email: 'sarah.williams@example.com',
         status: AthleteStatus.former,
-        major: 'Business Administration',
-        career: 'Marketing Manager',
+        major: AthleteMajor.business,
+        career: AthleteCareer.marketing,
         sport: 'Soccer',
         university: 'Tech University',
         profileImageUrl: 'https://i.pravatar.cc/150?img=5',
@@ -40,8 +42,8 @@ class MockProfileData {
         name: 'James Rodriguez',
         email: 'james.rodriguez@example.com',
         status: AthleteStatus.current,
-        major: 'Exercise Science',
-        career: '',
+        major: AthleteMajor.other,
+        career: AthleteCareer.inSchool,
         sport: 'Baseball',
         university: 'State University',
         profileImageUrl: 'https://i.pravatar.cc/150?img=3',
@@ -53,8 +55,8 @@ class MockProfileData {
         name: 'Emily Chen',
         email: 'emily.chen@example.com',
         status: AthleteStatus.former,
-        major: 'Psychology',
-        career: 'Sports Psychologist',
+        major: AthleteMajor.psychology,
+        career: AthleteCareer.other,
         sport: 'Swimming',
         university: 'National University',
         profileImageUrl: 'https://i.pravatar.cc/150?img=9',
@@ -66,8 +68,8 @@ class MockProfileData {
         name: 'David Miller',
         email: 'david.miller@example.com',
         status: AthleteStatus.current,
-        major: 'Engineering',
-        career: '',
+        major: AthleteMajor.engineering,
+        career: AthleteCareer.inSchool,
         sport: 'Track & Field',
         university: 'Tech University',
         profileImageUrl: 'https://i.pravatar.cc/150?img=8',
@@ -75,6 +77,96 @@ class MockProfileData {
         graduationYear: DateTime(2026),
       ),
     ];
+    
+    // Generate additional random athletes
+    final randomAthletes = _generateRandomAthletes(20);
+    
+    // Combine both lists
+    return [...sampleAthletes, ...randomAthletes];
+  }
+
+  /// Generate a list of random athletes for testing
+  static List<Athlete> _generateRandomAthletes(int count) {
+    final random = Random();
+    final athletes = <Athlete>[];
+    
+    final firstNames = [
+      'John', 'Emma', 'Lucas', 'Olivia', 'William', 'Ava', 'James', 
+      'Sophia', 'Benjamin', 'Isabella', 'Mason', 'Mia', 'Elijah', 
+      'Charlotte', 'Liam', 'Amelia', 'Noah', 'Harper', 'Ethan', 'Evelyn'
+    ];
+    
+    final lastNames = [
+      'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller',
+      'Davis', 'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez',
+      'Wilson', 'Anderson', 'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin'
+    ];
+    
+    final sports = [
+      'Basketball', 'Football', 'Soccer', 'Baseball', 'Volleyball',
+      'Track & Field', 'Swimming', 'Tennis', 'Golf', 'Lacrosse',
+      'Hockey', 'Rugby', 'Gymnastics', 'Wrestling', 'Rowing'
+    ];
+    
+    final universities = [
+      'State University', 'Tech University', 'National University',
+      'Pacific University', 'University of the East', 'Central College',
+      'Western Institute', 'Lakeview University', 'Coastal College',
+      'Mountain State University', 'Valley College', 'Metropolitan University'
+    ];
+    
+    final achievements = [
+      'Team Captain', 'Conference Champion', 'All-American', 'MVP',
+      'Rookie of the Year', 'Academic All-Star', 'National Finalist',
+      'Record Holder', 'All-Conference Team', 'Tournament Champion',
+      'Scholar-Athlete Award', 'Leadership Award', 'Community Service Award'
+    ];
+    
+    for (int i = 0; i < count; i++) {
+      final firstName = firstNames[random.nextInt(firstNames.length)];
+      final lastName = lastNames[random.nextInt(lastNames.length)];
+      final id = (100 + i).toString();
+      final status = random.nextBool() ? AthleteStatus.current : AthleteStatus.former;
+      
+      // Generate random graduation year based on status
+      final currentYear = DateTime.now().year;
+      final graduationYear = status == AthleteStatus.current
+          ? DateTime(currentYear + random.nextInt(4) + 1)
+          : DateTime(currentYear - random.nextInt(10) - 1);
+          
+      // Set career based on status
+      final career = status == AthleteStatus.current
+          ? AthleteCareer.inSchool
+          : AthleteCareer.values[random.nextInt(AthleteCareer.values.length - 1) + 1];
+      
+      // Generate random achievements
+      final athleteAchievements = <String>[];
+      final achievementCount = random.nextInt(3) + 1; // 1-3 achievements
+      
+      for (int j = 0; j < achievementCount; j++) {
+        final achievement = achievements[random.nextInt(achievements.length)];
+        if (!athleteAchievements.contains(achievement)) {
+          athleteAchievements.add(achievement);
+        }
+      }
+      
+      // Create the athlete
+      athletes.add(Athlete(
+        id: id,
+        name: '$firstName $lastName',
+        email: '${firstName.toLowerCase()}.${lastName.toLowerCase()}@example.com',
+        status: status,
+        major: AthleteMajor.values[random.nextInt(AthleteMajor.values.length)],
+        career: career,
+        sport: sports[random.nextInt(sports.length)],
+        university: universities[random.nextInt(universities.length)],
+        profileImageUrl: 'https://i.pravatar.cc/150?img=${10 + random.nextInt(50)}',
+        achievements: athleteAchievements,
+        graduationYear: graduationYear,
+      ));
+    }
+    
+    return athletes;
   }
 
   /// Load athletes from browser storage or use initial data if not available

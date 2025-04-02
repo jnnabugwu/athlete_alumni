@@ -5,6 +5,7 @@ import '../bloc/edit_profile_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_edit_page.dart';
 
+//TODO: understand this screen decrepancy later
 class EditProfileScreen extends StatelessWidget {
   final Athlete athlete;
   

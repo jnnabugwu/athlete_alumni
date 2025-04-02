@@ -68,7 +68,7 @@ class TypeSpecificSection extends StatelessWidget {
         _buildInfoRow(
           context, 
           'Major', 
-          athlete.major,
+          athlete.major.displayName,
           Icons.book,
         ),
         const Divider(height: 24),
@@ -98,7 +98,7 @@ class TypeSpecificSection extends StatelessWidget {
         _buildInfoRow(
           context, 
           'Career', 
-          athlete.career,
+          athlete.career.displayName,
           Icons.work,
         ),
         const Divider(height: 24),
