@@ -61,3 +61,15 @@ class RobustNetworkInfoImpl implements NetworkInfo {
     return false;
   }
 }
+
+/// Web-specific implementation that always returns true for simplicity
+@Named('webNetworkInfo')
+@Injectable(as: NetworkInfo)
+class WebNetworkInfoImpl implements NetworkInfo {
+  @override
+  Future<bool> get isConnected async {
+    // For web app development, we'll just return true for simplicity
+    // In a real app, you could use navigator.onLine but it's not always reliable
+    return Future.value(true);
+  }
+}

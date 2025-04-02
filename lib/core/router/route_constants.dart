@@ -5,6 +5,9 @@ class RouteConstants {
   static const String register = '/register';
   static const String passwordReset = '/password-reset';
   static const String profile = '/profile';
+  static const String profileWithId = '/profile/:id';
+  static const String myProfile = '/my-profile';
+  static const String editProfile = '/profile/:id/edit';
   static const String athletes = '/athletes';
   static const String forums = '/forums';
 

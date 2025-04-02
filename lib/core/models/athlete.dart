@@ -1,24 +1,12 @@
-enum AthleteStatus {
-  current,
-  former;
-
-  String get displayName {
-    switch (this) {
-      case AthleteStatus.current:
-        return 'Current Athlete';
-      case AthleteStatus.former:
-        return 'Former Athlete';
-    }
-  }
-}
+part 'athlete_enums.dart';
 
 class Athlete {
   final String id;
   final String name;
   final String email;
   final AthleteStatus status;
-  final String major;
-  final String career;
+  final AthleteMajor major;
+  final AthleteCareer career;
   final String? profileImageUrl;
   final String? university;
   final String? sport;
@@ -45,8 +33,8 @@ class Athlete {
     String? name,
     String? email,
     AthleteStatus? status,
-    String? major,
-    String? career,
+    AthleteMajor? major,
+    AthleteCareer? career,
     String? profileImageUrl,
     String? university,
     String? sport,
@@ -78,8 +66,14 @@ class Athlete {
         (e) => e.name == json['status'],
         orElse: () => AthleteStatus.current,
       ),
-      major: json['major'] as String,
-      career: json['career'] as String,
+      // Convert string to AthleteMajor enum, defaulting to "other" if not recognized
+      major: json['major'] != null 
+        ? AthleteMajor.fromString(json['major'] as String) 
+        : AthleteMajor.other,
+      // Convert string to AthleteCareer enum, defaulting to "other" if not recognized
+      career: json['career'] != null 
+        ? AthleteCareer.fromString(json['career'] as String) 
+        : AthleteCareer.other,
       profileImageUrl: json['profileImageUrl'] as String?,
       university: json['university'] as String?,
       sport: json['sport'] as String?,
@@ -97,8 +91,9 @@ class Athlete {
       'name': name,
       'email': email,
       'status': status.name,
-      'major': major,
-      'career': career,
+      // Store major and career as display names for better readability
+      'major': major.displayName,
+      'career': career.displayName,
       'profileImageUrl': profileImageUrl,
       'university': university,
       'sport': sport,
@@ -109,6 +104,6 @@ class Athlete {
 
   @override
   String toString() {
-    return 'Athlete(id: $id, name: $name, status: ${status.displayName}, major: $major, career: $career)';
+    return 'Athlete(id: $id, name: $name, status: ${status.displayName}, major: ${major.displayName}, career: ${career.displayName})';
   }
 } 

@@ -12,31 +12,67 @@ class WebStorage {
   static Stream<void> get onAuthStateChange => _authStateController.stream;
 
   static Future<void> saveAuthState(String state) async {
-    html.window.localStorage[_authKey] = state;
-    _authStateController.add(null); // Notify listeners of state change
+    print("WebStorage: Saving auth state: $state");
+    try {
+      html.window.localStorage[_authKey] = state;
+      print("WebStorage: Auth state saved successfully");
+      _authStateController.add(null); // Notify listeners of state change
+    } catch (e) {
+      print("WebStorage: Error saving auth state: $e");
+      rethrow;
+    }
   }
 
   static Future<String?> getAuthState() async {
-    return html.window.localStorage[_authKey];
+    try {
+      final state = html.window.localStorage[_authKey];
+      print("WebStorage: Retrieved auth state: $state");
+      return state;
+    } catch (e) {
+      print("WebStorage: Error getting auth state: $e");
+      return null;
+    }
   }
 
   static Future<void> saveAthleteData(String athleteJson) async {
-    html.window.localStorage[_athleteKey] = athleteJson;
-    _authStateController.add(null); // Notify listeners of state change
+    print("WebStorage: Saving athlete data: $athleteJson");
+    try {
+      html.window.localStorage[_athleteKey] = athleteJson;
+      print("WebStorage: Athlete data saved successfully");
+      _authStateController.add(null); // Notify listeners of state change
+    } catch (e) {
+      print("WebStorage: Error saving athlete data: $e");
+      rethrow;
+    }
   }
 
   static Future<String?> getAthleteData() async {
-    return html.window.localStorage[_athleteKey];
+    try {
+      final data = html.window.localStorage[_athleteKey];
+      print("WebStorage: Retrieved athlete data: $data");
+      return data;
+    } catch (e) {
+      print("WebStorage: Error getting athlete data: $e");
+      return null;
+    }
   }
 
   static Future<void> clearAuthData() async {
-    html.window.localStorage.remove(_authKey);
-    html.window.localStorage.remove(_athleteKey);
-    _authStateController.add(null); // Notify listeners of state change
+    print("WebStorage: Clearing auth data");
+    try {
+      html.window.localStorage.remove(_authKey);
+      html.window.localStorage.remove(_athleteKey);
+      print("WebStorage: Auth data cleared successfully");
+      _authStateController.add(null); // Notify listeners of state change
+    } catch (e) {
+      print("WebStorage: Error clearing auth data: $e");
+      rethrow;
+    }
   }
 
   // Clean up the stream controller when done
   static void dispose() {
+    print("WebStorage: Disposing stream controller");
     _authStateController.close();
   }
 } 
