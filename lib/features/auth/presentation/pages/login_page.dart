@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
-import '../../../../core/models/athlete.dart';
 import '../bloc/auth_bloc.dart';
+import '../../../../core/config/supabase_config.dart';
+import '../../../../core/utils/web_storage.dart';
+import 'dart:math' as math;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -27,6 +29,7 @@ class _LoginPageState extends State<LoginPage> {
 
   void _handleLogin() {
     if (_formKey.currentState!.validate()) {
+      debugPrint('Login requested with email: ${_emailController.text}');
       context.read<AuthBloc>().add(
             AuthSignInRequested(
               email: _emailController.text,
@@ -344,6 +347,218 @@ class _LoginPageState extends State<LoginPage> {
               color: Colors.grey[600],
             ),
             textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          // Add connection test button
+          OutlinedButton(
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Testing Supabase connection...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+              
+              try {
+                // Use Supabase client directly for testing
+                final client = SupabaseConfig.client;
+                try {
+                  // Simple test query that will likely fail, but shows connection works
+                  await client.from('_dummy_test')
+                      .select('*')
+                      .limit(1)
+                      .maybeSingle();
+                      
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Supabase connection successful!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  // Even a "table not found" error means the connection works
+                  if (e.toString().contains('does not exist') || 
+                      e.toString().contains('not found')) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Supabase connection successful! (Table not found but connection works)'),
+                        backgroundColor: Colors.green,
+                      ),
+                    );
+                    debugPrint('✅ Connection works! Normal error: $e');
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Supabase connection failed: ${e.toString().substring(0, math.min(100, e.toString().length))}...'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                    debugPrint('❌ Connection test error: $e');
+                  }
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error testing connection: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: Colors.grey[400]!),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.wifi, size: 16),
+                SizedBox(width: 8),
+                Text('Test Supabase Connection'),
+              ],
+            ),
+          ),
+          
+          const SizedBox(height: 12),
+          // Add policy test button
+          OutlinedButton(
+            onPressed: () async {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Testing database policies...'),
+                  duration: Duration(seconds: 1),
+                ),
+              );
+              
+              try {
+                // Use Supabase client directly for testing
+                final client = SupabaseConfig.client;
+                
+                // Test if the athletes table exists
+                try {
+                  await client.from('athletes')
+                      .select('count(*)')
+                      .limit(1);
+                      
+                  debugPrint('✅ Athletes table exists and is accessible');
+                  
+                  // Try to get policies - this requires admin rights and will likely fail
+                  // but the error can tell us about permissions
+                  try {
+                    await client.rpc('get_policies_for_table', params: {'table_name': 'athletes'})
+                        .timeout(const Duration(seconds: 3));
+                  } catch (policyError) {
+                    debugPrint('⚠️ Policy check error (expected): $policyError');
+                    if (policyError.toString().contains('permission denied')) {
+                      debugPrint('✅ Policies exist (permission denied is expected for non-admin)');
+                    }
+                  }
+                  
+                  // Check insert specifically
+                  try {
+                    // Create a test user - will fail but tells us about insert policy
+                    final testData = {
+                      'id': '00000000-0000-0000-0000-000000000000',
+                      'email': 'policy.test@example.com',
+                      'full_name': 'Policy Test',
+                      'username': 'policytest',
+                      'athlete_status': 'former',
+                      'created_at': DateTime.now().toIso8601String(),
+                      'updated_at': DateTime.now().toIso8601String(),
+                    };
+                    
+                    await client.from('athletes')
+                        .insert(testData)
+                        .timeout(const Duration(seconds: 3));
+                        
+                    debugPrint('⚠️ INSERT succeeded, but should have failed (no auth)');
+                  } catch (insertError) {
+                    debugPrint('✅ INSERT policy check: $insertError');
+                    if (insertError.toString().contains('policy')) {
+                      debugPrint('✅ INSERT policy exists and is enforcing rules');
+                    } else if (insertError.toString().contains('foreign key')) {
+                      debugPrint('✅ INSERT policy is likely working (foreign key constraint)');
+                    } else {
+                      debugPrint('⚠️ INSERT policy check inconclusive');
+                    }
+                  }
+                  
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Database policies check completed - see logs for details'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Athletes table not accessible: ${e.toString().substring(0, math.min(100, e.toString().length))}'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  debugPrint('⚠️ Athletes table check error: $e');
+                }
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error testing policies: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: Colors.grey[400]!),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.security, size: 16),
+                SizedBox(width: 8),
+                Text('Test Database Policies'),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          // Clear storage button
+          OutlinedButton(
+            onPressed: () async {
+              try {
+                debugPrint('🧹 Clearing stored auth state...');
+                // Use the WebStorage directly
+                await WebStorage.clearAuthData();
+                
+                // Also reset the AuthBloc state
+                context.read<AuthBloc>().add(const AuthCheckRequested());
+                
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Auth state cleared!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Error clearing state: $e'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: Colors.grey[400]!),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.cleaning_services, size: 16),
+                SizedBox(width: 8),
+                Text('Reset App State'),
+              ],
+            ),
           ),
         ],
       ),

@@ -5,7 +5,7 @@ import 'package:athlete_alumni/features/auth/data/datasources/auth_remote_data_s
 class AuthRepositoryImpl implements AuthRepository {
   final AuthRemoteDataSource remoteDataSource;
 
-  AuthRepositoryImpl(Object object, {required this.remoteDataSource});
+  AuthRepositoryImpl({required this.remoteDataSource});
 
   @override
   Future<void> signIn({

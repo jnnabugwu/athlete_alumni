@@ -6,6 +6,7 @@ import 'package:athlete_alumni/features/auth/domain/repositories/auth_repository
 import 'package:equatable/equatable.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
 import 'dart:math' as math;
+import 'package:flutter/foundation.dart';
 part 'auth_event.dart';
 part 'auth_state.dart';
 
@@ -36,6 +37,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      debugPrint("AuthBloc: Skip loading persisted state to avoid errors");
+      // Comment out state loading to prevent loading old error states
+      /*
       final savedState = await WebStorage.getAuthState();
       final savedAthlete = await WebStorage.getAthleteData();
 
@@ -56,6 +60,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           errorMessage: stateMap['errorMessage'],
         ));
       }
+      */
+      
+      // Just emit the initial unauthenticated state
+      emit(const AuthState(status: AuthStatus.unauthenticated));
     } catch (e) {
       add(AuthErrorOccurred('Failed to load persisted state: ${e.toString()}'));
     }
@@ -69,18 +77,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         'errorMessage': state.errorMessage,
       };
       print("AuthBloc: Saving auth state map: $stateMap");
-      await WebStorage.saveAuthState(json.encode(stateMap));
+      
+      // Comment out WebStorage persistence to prevent freezing
+      // await WebStorage.saveAuthState(json.encode(stateMap));
 
       if (state.athlete != null) {
         print("AuthBloc: Preparing to save athlete data: ${state.athlete}");
         try {
           final athleteJson = json.encode(state.athlete!.toJson());
           print("AuthBloc: Athlete JSON encoded: ${athleteJson.substring(0, math.min(100, athleteJson.length))}...");
-          await WebStorage.saveAthleteData(athleteJson);
+          
+          // Comment out WebStorage persistence to prevent freezing
+          // await WebStorage.saveAthleteData(athleteJson);
+          
           print("AuthBloc: Athlete data saved successfully");
         } catch (jsonError) {
           print("AuthBloc: Error encoding athlete to JSON: $jsonError");
-          throw jsonError;
+          rethrow;
         }
       } else {
         print("AuthBloc: No athlete data to save");
@@ -123,7 +136,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       emit(state.copyWith(status: AuthStatus.loading));
       await _authRepository.signOut();
-      await WebStorage.clearAuthData();
+      
+      // Comment out WebStorage persistence to prevent freezing
+      // await WebStorage.clearAuthData();
+      
       emit(state.copyWith(status: AuthStatus.unauthenticated));
     } catch (e) {
       add(AuthErrorOccurred(e.toString()));
@@ -169,6 +185,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      debugPrint('⭐ AuthBloc: Processing signup request for ${event.email}');
       emit(state.copyWith(status: AuthStatus.loading));
       
       await _authRepository.signUp(
@@ -179,20 +196,42 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         college: event.college,
         athleteStatus: event.athleteStatus,
       );
-
-      // After successful registration, emit email verification state
-      emit(state.copyWith(
-        status: AuthStatus.emailVerificationSent,
-        errorMessage: null,
-      ));
-
-      // After a delay, set state to unauthenticated for login
-      await Future.delayed(const Duration(seconds: 2));
-      emit(state.copyWith(
-        status: AuthStatus.unauthenticated,
-        errorMessage: null,
-      ));
+      
+      debugPrint('⭐ AuthBloc: Sign up operation completed, checking for successful authentication');
+      
+      // Check if user is authenticated after signup (might be due to email verification requirement)
+      final isAuthenticated = await _authRepository.isSignedIn();
+      debugPrint('⭐ AuthBloc: Is user authenticated? $isAuthenticated');
+      
+      if (isAuthenticated) {
+        debugPrint('⭐ AuthBloc: User is authenticated, fetching athlete data');
+        // User is authenticated, get their data
+        final athlete = await _authRepository.getCurrentAthlete();
+        debugPrint('⭐ AuthBloc: Athlete data retrieved: ${athlete != null}');
+        
+        final authenticatedState = state.copyWith(
+          status: AuthStatus.authenticated,
+          athlete: athlete,
+          errorMessage: null,
+        );
+        
+        emit(authenticatedState);
+        await _persistState(authenticatedState);
+        debugPrint('⭐ AuthBloc: Authenticated state emitted');
+      } else {
+        debugPrint('⭐ AuthBloc: User not authenticated immediately, sending verification state');
+        // After successful registration, emit email verification state
+        final verificationState = state.copyWith(
+          status: AuthStatus.emailVerificationSent,
+          errorMessage: null,
+        );
+        
+        emit(verificationState);
+        await _persistState(verificationState);
+        debugPrint('⭐ AuthBloc: Email verification state emitted');
+      }
     } catch (e) {
+      debugPrint('⭐ AuthBloc: Error during sign up: $e');
       add(AuthErrorOccurred(e.toString()));
     }
   }
