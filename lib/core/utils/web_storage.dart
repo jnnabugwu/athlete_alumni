@@ -7,6 +7,7 @@ class WebStorage {
   
   // Stream controller for auth state changes
   static final _authStateController = StreamController<void>.broadcast();
+  static bool _isDisposed = false;
 
   // Stream for auth state changes
   static Stream<void> get onAuthStateChange => _authStateController.stream;
@@ -16,7 +17,11 @@ class WebStorage {
     try {
       html.window.localStorage[_authKey] = state;
       print("WebStorage: Auth state saved successfully");
-      _authStateController.add(null); // Notify listeners of state change
+      
+      // Only add to stream if not disposed
+      if (!_isDisposed && !_authStateController.isClosed) {
+        _authStateController.add(null); // Notify listeners of state change
+      }
     } catch (e) {
       print("WebStorage: Error saving auth state: $e");
       rethrow;
@@ -39,7 +44,11 @@ class WebStorage {
     try {
       html.window.localStorage[_athleteKey] = athleteJson;
       print("WebStorage: Athlete data saved successfully");
-      _authStateController.add(null); // Notify listeners of state change
+      
+      // Only add to stream if not disposed
+      if (!_isDisposed && !_authStateController.isClosed) {
+        _authStateController.add(null); // Notify listeners of state change
+      }
     } catch (e) {
       print("WebStorage: Error saving athlete data: $e");
       rethrow;
@@ -63,7 +72,11 @@ class WebStorage {
       html.window.localStorage.remove(_authKey);
       html.window.localStorage.remove(_athleteKey);
       print("WebStorage: Auth data cleared successfully");
-      _authStateController.add(null); // Notify listeners of state change
+      
+      // Only add to stream if not disposed
+      if (!_isDisposed && !_authStateController.isClosed) {
+        _authStateController.add(null); // Notify listeners of state change
+      }
     } catch (e) {
       print("WebStorage: Error clearing auth data: $e");
       rethrow;
@@ -73,6 +86,10 @@ class WebStorage {
   // Clean up the stream controller when done
   static void dispose() {
     print("WebStorage: Disposing stream controller");
-    _authStateController.close();
+    _isDisposed = true;
+    
+    if (!_authStateController.isClosed) {
+      _authStateController.close();
+    }
   }
 } 

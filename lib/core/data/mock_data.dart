@@ -1,4 +1,3 @@
-import 'package:athlete_alumni/features/auth/domain/entities/user.dart';
 
 
 final List<Map<String, dynamic>> mockAthletes = [

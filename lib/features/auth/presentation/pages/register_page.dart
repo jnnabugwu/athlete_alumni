@@ -36,6 +36,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _handleRegister() {
     if (_formKey.currentState!.validate()) {
+      debugPrint('👤 Registration requested with email: ${_emailController.text}, name: ${_fullNameController.text}');
+      debugPrint('Status: ${_athleteStatus.name}, College: ${_collegeController.text}');
+      
       context.read<AuthBloc>().add(
             AuthSignUpRequested(
               email: _emailController.text,
@@ -70,17 +73,27 @@ class _RegisterPageState extends State<RegisterPage> {
             ),
           );
         } else if (state.status == AuthStatus.emailVerificationSent) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Registration successful! Please check your email to verify your account.'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 5),
-            ),
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (BuildContext context) {
+              return AlertDialog(
+                title: const Text('Verification Email Sent'),
+                content: const Text(
+                  'We\'ve sent a verification email to your address. Please check your inbox and click the verification link to complete your registration.',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      context.go(RouteConstants.login);
+                    },
+                    child: const Text('Go to Login'),
+                  ),
+                ],
+              );
+            },
           );
-          // Optionally navigate to login page after successful registration
-          Future.delayed(const Duration(seconds: 2), () {
-            context.go(RouteConstants.login);
-          });
         }
       },
       child: Scaffold(
@@ -289,6 +302,39 @@ class _RegisterPageState extends State<RegisterPage> {
                           color: Colors.white,
                         ),
                       ),
+              ),
+              const SizedBox(height: 12),
+              Divider(color: Colors.grey[300]),
+              const SizedBox(height: 12),
+              OutlinedButton(
+                onPressed: () {
+                  debugPrint("🔧 Development testing registration");
+                  // Fill form with test data if empty
+                  if (_emailController.text.isEmpty) {
+                    _emailController.text = 'test.user@example.com';
+                    _passwordController.text = 'password123';
+                    _fullNameController.text = 'Test User';
+                    _usernameController.text = 'testuser';
+                    _collegeController.text = 'Test University';
+                  }
+                  // Skip verification and go directly to home page
+                  context.go(RouteConstants.home, extra: {'devBypass': true});
+                },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: Colors.grey[400]!),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.developer_mode, size: 20),
+                    SizedBox(width: 8),
+                    Text('Dev Registration (Bypass)'),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               TextButton(

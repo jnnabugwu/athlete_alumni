@@ -36,30 +36,41 @@ final appRouter = GoRouter(
   
   // Redirect based on authentication state
   redirect: (context, state) {
+    debugPrint("Router.redirect called for path: ${state.uri.path}");
+    debugPrint("Router.redirect extra: ${state.extra}");
+    
     // Development bypass
     // Check if this is a direct navigation from the Dev Login button
-    final bool isDevBypass = state.extra != null && state.extra is Map && (state.extra as Map).containsKey('devBypass');
+    final bool isDevBypass = state.extra != null && 
+                             state.extra is Map && 
+                             (state.extra as Map).containsKey('devBypass') &&
+                             (state.extra as Map)['devBypass'] == true;
     
     // Skip all auth checks if this is a dev bypass
     if (isDevBypass) {
-      print("Router: Dev bypass detected, skipping auth checks");
+      debugPrint("Router: Dev bypass detected, skipping auth checks for ${state.uri.path}");
       return null; // Don't redirect
     }
     
     final isLoggedIn = _isAuthenticated();
+    debugPrint("Router: isLoggedIn = $isLoggedIn");
+    
     final isGoingToLogin = state.uri.path == RouteConstants.login || 
                           state.uri.path == RouteConstants.register;
     
     // If not logged in and not going to login/register, redirect to login
     if (!isLoggedIn && !isGoingToLogin) {
+      debugPrint("Router: Not logged in and not going to login/register, redirecting to login");
       return RouteConstants.login;
     }
     
     // If logged in and going to login/register, redirect to home
     if (isLoggedIn && isGoingToLogin) {
+      debugPrint("Router: Logged in and going to login/register, redirecting to home");
       return RouteConstants.home;
     }
     
+    debugPrint("Router: No redirect needed for ${state.uri.path}");
     return null;
   },
   
@@ -89,11 +100,14 @@ final appRouter = GoRouter(
     // Profile routes
     GoRoute(
       path: RouteConstants.profileWithId,
+      name: 'profile',
       builder: (context, state) {
         final id = state.pathParameters['id'] ?? '';
         
         // Check if this is a dev bypass
         final bool isDevBypass = state.extra != null && state.extra is Map && (state.extra as Map).containsKey('devBypass');
+        
+        debugPrint("Profile Route: Building with id=$id, isDevBypass=$isDevBypass, extras=${state.extra}");
         
         // If dev bypass, we don't check if it's own profile since there's no real authentication
         final isOwnProfile = isDevBypass ? true : _isOwnProfile(id);
@@ -117,23 +131,29 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteConstants.myProfile,
       redirect: (context, state) {
+        debugPrint("MyProfile.redirect called with extra: ${state.extra}");
+        
         // Check if this is a dev bypass
         final bool isDevBypass = state.extra != null && 
                                  state.extra is Map && 
-                                 (state.extra as Map).containsKey('devBypass');
+                                 (state.extra as Map).containsKey('devBypass') &&
+                                 (state.extra as Map)['devBypass'] == true;
         
         // For dev bypass, use a mock ID
         if (isDevBypass) {
-          print("MyProfile Route: Dev bypass detected, using mock ID");
+          debugPrint("MyProfile Route: Dev bypass detected, using mock ID");
+          // Just return the path - the redirect method will preserve the extras
           return '/profile/mock-id-123';
         }
         
         // Normal flow - check for authenticated user
         final currentUser = _getCurrentUser();
         if (currentUser != null) {
+          debugPrint("MyProfile Route: Using current user ID: ${currentUser.id}");
           return '/profile/${currentUser.id}';
         }
         
+        debugPrint("MyProfile Route: No current user, redirecting to login");
         return RouteConstants.login;
       },
     ),

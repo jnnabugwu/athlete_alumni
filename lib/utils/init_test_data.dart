@@ -8,6 +8,8 @@ import 'web_storage.dart';
 class TestDataInitializer {
   static const String _assetPath = 'assets/data/athletes.json';
   
+
+  
   /// Initialize athlete data with the following priority:
   /// 1. Use data already in localStorage if it exists
   /// 2. Try to load from bundled asset file

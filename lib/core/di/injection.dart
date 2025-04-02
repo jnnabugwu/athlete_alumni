@@ -64,20 +64,11 @@ Future<void> _initAuth() async {
   // Repositories
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
-      sl<SupabaseClient>(),
       remoteDataSource: sl<AuthRemoteDataSource>(),
     ),
   );
 
-  // Use Cases
-  // sl
-  //   ..registerLazySingleton(() => SignInUseCase(sl()))
-  //   ..registerLazySingleton(() => SignUpUseCase(sl()))
-  //   ..registerLazySingleton(() => SignOutUseCase(sl()))
-  //   ..registerLazySingleton(() => GetCurrentAthleteUseCase(sl()))
-  //   ..registerLazySingleton(() => IsSignedInUseCase(sl()));
-
-  // Blocs
+  // Blocs - Simplified without the use cases
   sl.registerFactory<AuthBloc>(
     () => AuthBloc(sl<AuthRepository>()),
   );
