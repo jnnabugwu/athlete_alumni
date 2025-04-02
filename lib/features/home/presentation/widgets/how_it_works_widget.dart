@@ -18,8 +18,8 @@ class HowItWorksWidget extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0),
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24.0),
             child: Text(
               'Connect with fellow athletes from your college and sport to build your network and career',
               style: TextStyle(
@@ -43,20 +43,20 @@ class HowItWorksWidget extends StatelessWidget {
 
     if (isNarrow) {
       // Stack steps vertically on narrow screens
-      return Column(
+      return const Column(
         children: [
           StepCard(
             number: '1',
             title: 'Create Your Profile',
             description: 'Sign up and build your athlete profile with your college, sport, and career details.',
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           StepCard(
             number: '2',
             title: 'Find Your Network',
             description: 'Browse rosters by college and sport to connect with current and former athletes.',
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: 16),
           StepCard(
             number: '3',
             title: 'Get Mentored',
@@ -66,7 +66,7 @@ class HowItWorksWidget extends StatelessWidget {
       );
     } else {
       // Horizontal layout for wider screens
-      return Row(
+      return const Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Expanded(
@@ -76,7 +76,7 @@ class HowItWorksWidget extends StatelessWidget {
               description: 'Sign up and build your athlete profile with your college, sport, and career details.',
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: StepCard(
               number: '2',
@@ -84,7 +84,7 @@ class HowItWorksWidget extends StatelessWidget {
               description: 'Browse rosters by college and sport to connect with current and former athletes.',
             ),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: 16),
           Expanded(
             child: StepCard(
               number: '3',
@@ -145,7 +145,7 @@ class StepCard extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               description,
-              style: TextStyle(
+              style: const TextStyle(
                 fontSize: 14,
                 color: AppColors.textSecondary,
               ),

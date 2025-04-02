@@ -31,7 +31,7 @@ class Athlete {
   
   // Factory method to create a mock current athlete
   factory Athlete.mockCurrent() {
-    return Athlete(
+    return const Athlete(
       id: '1',
       name: 'John Doe',
       profileImageUrl: 'https://via.placeholder.com/150',
@@ -45,7 +45,7 @@ class Athlete {
   
   // Factory method to create a mock former athlete
   factory Athlete.mockFormer() {
-    return Athlete(
+    return const Athlete(
       id: '2',
       name: 'Jane Smith',
       profileImageUrl: 'https://via.placeholder.com/150',

@@ -31,7 +31,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      return Left(NetworkFailure(message: 'No internet connection'));
+      return const Left(NetworkFailure(message: 'No internet connection'));
     }
   }
   
@@ -45,7 +45,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      return Left(NetworkFailure(message: 'No internet connection'));
+      return const Left(NetworkFailure(message: 'No internet connection'));
     }
   }
   
@@ -67,7 +67,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         return Left(ServerFailure(message: e.message));
       }
     } else {
-      return Left(NetworkFailure(message: 'No internet connection'));
+      return const Left(NetworkFailure(message: 'No internet connection'));
     }
   }
 }

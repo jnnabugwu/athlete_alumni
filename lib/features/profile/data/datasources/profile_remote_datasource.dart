@@ -91,11 +91,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       
       // Update the athlete's profile image in localStorage
       final athlete = await getProfile(athleteId);
-      if (athlete != null) {
-        final updatedAthlete = athlete.copyWith(profileImageUrl: imageUrl);
-        await updateProfile(updatedAthlete);
-      }
-      
+      final updatedAthlete = athlete.copyWith(profileImageUrl: imageUrl);
+      await updateProfile(updatedAthlete);
+          
       return imageUrl;
     } catch (e) {
       throw ServerException(message: e.toString(), statusCode: 500);
