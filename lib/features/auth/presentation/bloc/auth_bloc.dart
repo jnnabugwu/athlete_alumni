@@ -37,35 +37,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      debugPrint("AuthBloc: Skip loading persisted state to avoid errors");
-      // Comment out state loading to prevent loading old error states
-      /*
-      final savedState = await WebStorage.getAuthState();
-      final savedAthlete = await WebStorage.getAthleteData();
-
-      if (savedState != null) {
-        final stateMap = json.decode(savedState) as Map<String, dynamic>;
-        final status = AuthStatus.values.firstWhere(
-          (e) => e.toString() == stateMap['status'],
-        );
-
-        Athlete? athlete;
-        if (savedAthlete != null) {
-          athlete = Athlete.fromJson(json.decode(savedAthlete));
-        }
-
-        emit(AuthState(
-          status: status,
-          athlete: athlete,
-          errorMessage: stateMap['errorMessage'],
-        ));
-      }
-      */
+      debugPrint("AuthBloc: Loading persisted state");
+      final isSignedIn = await _authRepository.isSignedIn();
       
-      // Just emit the initial unauthenticated state
-      emit(const AuthState(status: AuthStatus.unauthenticated));
+      if (isSignedIn) {
+        debugPrint("AuthBloc: User is signed in, getting athlete data");
+        final athlete = await _authRepository.getCurrentAthlete();
+        emit(AuthState(
+          status: AuthStatus.authenticated,
+          athlete: athlete,
+        ));
+        debugPrint("AuthBloc: Emitted authenticated state with athlete");
+      } else {
+        debugPrint("AuthBloc: User is not signed in");
+        emit(const AuthState(status: AuthStatus.unauthenticated));
+      }
     } catch (e) {
-      add(AuthErrorOccurred('Failed to load persisted state: ${e.toString()}'));
+      debugPrint("AuthBloc: Error loading persisted state: $e");
+      emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 
@@ -109,22 +98,22 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      debugPrint("AuthBloc: Checking auth status");
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
+        debugPrint("AuthBloc: User is signed in, getting athlete data");
         final athlete = await _authRepository.getCurrentAthlete();
-        final newState = state.copyWith(
+        emit(AuthState(
           status: AuthStatus.authenticated,
           athlete: athlete,
-        );
-        emit(newState);
-        await _persistState(newState);
+        ));
       } else {
-        final newState = state.copyWith(status: AuthStatus.unauthenticated);
-        emit(newState);
-        await _persistState(newState);
+        debugPrint("AuthBloc: User is not signed in");
+        emit(const AuthState(status: AuthStatus.unauthenticated));
       }
     } catch (e) {
+      debugPrint("AuthBloc: Error checking auth status: $e");
       add(AuthErrorOccurred(e.toString()));
     }
   }

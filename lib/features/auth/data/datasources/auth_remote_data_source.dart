@@ -96,6 +96,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } catch (authError) {
         debugPrint('❌ STEP ERROR: Auth creation failed: $authError');
         debugPrint('❌ Error type: ${authError.runtimeType}');
+        debugPrint('❌ Error message: ${authResponse.toString()}');
         throw AuthException('Auth user creation failed: ${authError.toString()}');
       }
       

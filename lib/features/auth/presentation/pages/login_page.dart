@@ -43,7 +43,9 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
+        debugPrint('LoginPage: Auth state changed to ${state.status}');
         if (state.status == AuthStatus.authenticated) {
+          debugPrint('LoginPage: User authenticated, navigating to home');
           context.go(RouteConstants.home);
         } else if (state.status == AuthStatus.error) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -231,337 +233,369 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildLoginForm(AuthState state) {
-    return Form(
-      key: _formKey,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const Text(
-            'Welcome Back',
-            style: TextStyle(
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF0A1F44),
-            ),
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Fixed header and form fields section
+        const Text(
+          'Welcome Back',
+          style: TextStyle(
+            fontSize: 32,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF0A1F44),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Sign in to your account to continue',
-            style: TextStyle(
-              fontSize: 16,
-              color: Colors.grey[600],
-            ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Sign in to your account to continue',
+          style: TextStyle(
+            fontSize: 16,
+            color: Colors.grey[600],
           ),
-          const SizedBox(height: 32),
-          _buildFormField(
-            label: 'Email',
-            controller: _emailController,
-            hintText: 'Enter your email',
-            keyboardType: TextInputType.emailAddress,
-          ),
-          const SizedBox(height: 24),
-          _buildFormField(
-            label: 'Password',
-            controller: _passwordController,
-            hintText: 'Enter your password',
-            isPassword: true,
-          ),
-          const SizedBox(height: 32),
-          ElevatedButton(
-            onPressed: state.status == AuthStatus.loading ? null : _handleLogin,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0A1F44),
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: state.status == AuthStatus.loading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'Sign In',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white,
-                    ),
-                  ),
-          ),
-          // Add dev login button
-          const SizedBox(height: 12),
-          Divider(color: Colors.grey[300]),
-          const SizedBox(height: 12),
-          OutlinedButton(
-            onPressed: () {
-              print("Dev login clicked - direct navigation bypass");
-              try {
-                // Skip the entire auth flow and navigate directly to home
-                // Pass devBypass parameter to let the router know this is a development bypass
-                context.go(RouteConstants.home, extra: {'devBypass': true});
-              } catch (e) {
-                print("Error in dev login bypass: $e");
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              side: BorderSide(color: Colors.grey[400]!),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.developer_mode, size: 20),
-                SizedBox(width: 8),
-                Text('Dev Login (Direct Bypass)'),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        ),
+        const SizedBox(height: 32),
+        Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              TextButton(
-                onPressed: () => context.go(RouteConstants.register),
-                child: const Text('Create an account'),
+              _buildFormField(
+                label: 'Email',
+                controller: _emailController,
+                hintText: 'Enter your email',
+                keyboardType: TextInputType.emailAddress,
               ),
-              TextButton(
-                onPressed: () => context.go(RouteConstants.passwordReset),
-                child: const Text('Forgot password?'),
+              const SizedBox(height: 24),
+              _buildFormField(
+                label: 'Password',
+                controller: _passwordController,
+                hintText: 'Enter your password',
+                isPassword: true,
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: state.status == AuthStatus.loading ? null : _handleLogin,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF0A1F44),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: state.status == AuthStatus.loading
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Sign In',
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
+                      ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          Text(
-            'By continuing, you agree to our Terms of Service and Privacy Policy.',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 24),
-          // Add connection test button
-          OutlinedButton(
-            onPressed: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Testing Supabase connection...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-              
-              try {
-                // Use Supabase client directly for testing
-                final client = SupabaseConfig.client;
-                try {
-                  // Simple test query that will likely fail, but shows connection works
-                  await client.from('_dummy_test')
-                      .select('*')
-                      .limit(1)
-                      .maybeSingle();
-                      
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Supabase connection successful!'),
-                      backgroundColor: Colors.green,
+        ),
+        
+        // Scrollable buttons section
+        Expanded(
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 12),
+                Divider(color: Colors.grey[300]),
+                const SizedBox(height: 12),
+                // Dev login button
+                OutlinedButton(
+                  onPressed: () {
+                    print("Dev login clicked - direct navigation bypass");
+                    try {
+                      context.go(RouteConstants.home, extra: {'devBypass': true});
+                    } catch (e) {
+                      print("Error in dev login bypass: $e");
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: BorderSide(color: Colors.grey[400]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                } catch (e) {
-                  // Even a "table not found" error means the connection works
-                  if (e.toString().contains('does not exist') || 
-                      e.toString().contains('not found')) {
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.developer_mode, size: 20),
+                      SizedBox(width: 8),
+                      Text('Dev Login (Direct Bypass)'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // CORS test button
+                OutlinedButton(
+                  onPressed: () async {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Supabase connection successful! (Table not found but connection works)'),
-                        backgroundColor: Colors.green,
+                        content: Text('Testing for CORS issues...'),
+                        duration: Duration(seconds: 2),
                       ),
                     );
-                    debugPrint('✅ Connection works! Normal error: $e');
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Supabase connection failed: ${e.toString().substring(0, math.min(100, e.toString().length))}...'),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                    debugPrint('❌ Connection test error: $e');
-                  }
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error testing connection: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: BorderSide(color: Colors.grey[400]!),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.wifi, size: 16),
-                SizedBox(width: 8),
-                Text('Test Supabase Connection'),
-              ],
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          // Add policy test button
-          OutlinedButton(
-            onPressed: () async {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Testing database policies...'),
-                  duration: Duration(seconds: 1),
-                ),
-              );
-              
-              try {
-                // Use Supabase client directly for testing
-                final client = SupabaseConfig.client;
-                
-                // Test if the athletes table exists
-                try {
-                  await client.from('athletes')
-                      .select('count(*)')
-                      .limit(1);
-                      
-                  debugPrint('✅ Athletes table exists and is accessible');
-                  
-                  // Try to get policies - this requires admin rights and will likely fail
-                  // but the error can tell us about permissions
-                  try {
-                    await client.rpc('get_policies_for_table', params: {'table_name': 'athletes'})
-                        .timeout(const Duration(seconds: 3));
-                  } catch (policyError) {
-                    debugPrint('⚠️ Policy check error (expected): $policyError');
-                    if (policyError.toString().contains('permission denied')) {
-                      debugPrint('✅ Policies exist (permission denied is expected for non-admin)');
-                    }
-                  }
-                  
-                  // Check insert specifically
-                  try {
-                    // Create a test user - will fail but tells us about insert policy
-                    final testData = {
-                      'id': '00000000-0000-0000-0000-000000000000',
-                      'email': 'policy.test@example.com',
-                      'full_name': 'Policy Test',
-                      'username': 'policytest',
-                      'athlete_status': 'former',
-                      'created_at': DateTime.now().toIso8601String(),
-                      'updated_at': DateTime.now().toIso8601String(),
-                    };
                     
-                    await client.from('athletes')
-                        .insert(testData)
-                        .timeout(const Duration(seconds: 3));
+                    try {
+                      final client = SupabaseConfig.client;
+                      final currentUrl = Uri.base.toString();
+                      
+                      debugPrint('🔍 Testing connection from: $currentUrl');
+                      
+                      try {
+                        final response = await client.auth.getUser();
+                        debugPrint('✅ Auth API connection working, no CORS issues detected');
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('No CORS issues detected. App URL: $currentUrl'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      } catch (authErr) {
+                        debugPrint('⚠️ Auth API test error: $authErr');
                         
-                    debugPrint('⚠️ INSERT succeeded, but should have failed (no auth)');
-                  } catch (insertError) {
-                    debugPrint('✅ INSERT policy check: $insertError');
-                    if (insertError.toString().contains('policy')) {
-                      debugPrint('✅ INSERT policy exists and is enforcing rules');
-                    } else if (insertError.toString().contains('foreign key')) {
-                      debugPrint('✅ INSERT policy is likely working (foreign key constraint)');
-                    } else {
-                      debugPrint('⚠️ INSERT policy check inconclusive');
+                        if (authErr.toString().contains('Unexpected end of JSON input') ||
+                            authErr.toString().contains('Failed to fetch') ||
+                            authErr.toString().contains('NetworkError') ||
+                            authErr.toString().contains('CORS')) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('CORS ISSUE DETECTED! Update Supabase project settings to allow: $currentUrl'),
+                              backgroundColor: Colors.red,
+                              duration: const Duration(seconds: 8),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No CORS issues detected (normal auth error)'),
+                              backgroundColor: Colors.green,
+                            ),
+                          );
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint('❌ CORS test error: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error testing CORS: ${e.toString().substring(0, math.min(150, e.toString().length))}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
                     }
-                  }
-                  
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Database policies check completed - see logs for details'),
-                      backgroundColor: Colors.green,
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.red[400]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                } catch (e) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Athletes table not accessible: ${e.toString().substring(0, math.min(100, e.toString().length))}'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  debugPrint('⚠️ Athletes table check error: $e');
-                }
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error testing policies: ${e.toString()}'),
-                    backgroundColor: Colors.red,
                   ),
-                );
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: BorderSide(color: Colors.grey[400]!),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.security, size: 16),
-                SizedBox(width: 8),
-                Text('Test Database Policies'),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.security, size: 16, color: Colors.red),
+                      SizedBox(width: 8),
+                      Text('Test for CORS Issues'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // API URL Check button
+                OutlinedButton(
+                  onPressed: () async {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Checking Supabase API URL configuration...'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                    
+                    try {
+                      final client = SupabaseConfig.client;
+                      
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Check the Flutter console logs for API details'),
+                              SizedBox(height: 8),
+                              Text('Make sure your .env file contains the correct Supabase URL and API key')
+                            ],
+                          ),
+                          backgroundColor: Colors.blue,
+                          duration: Duration(seconds: 10),
+                        ),
+                      );
+                      
+                      debugPrint('🔍 Checking config in SupabaseConfig:');
+                      debugPrint('🔍 Client initialized: ${client != null}');
+                      
+                      debugPrint('');
+                      debugPrint('==== DEBUGGING 404 ERRORS ====');
+                      debugPrint('If signup is failing with 404, check these:');
+                      debugPrint('1. Ensure your .env has SUPABASE_URL and SUPABASE_ANON_KEY correctly set');
+                      debugPrint('2. Verify SUPABASE_URL doesn\'t have extra paths or trailing slashes');
+                      debugPrint('3. Check CORS settings in Supabase Dashboard for your app URL');
+                      debugPrint('==== END DEBUGGING INFO ====');
+                      
+                      try {
+                        await client.from('_unknown_table_test')
+                            .select()
+                            .limit(1)
+                            .maybeSingle();
+                      } catch (apiError) {
+                        if (apiError.toString().contains('does not exist')) {
+                          debugPrint('✅ Supabase API connection works (table not found error, which is normal)');
+                        } else {
+                          debugPrint('⚠️ Supabase API access error: $apiError');
+                        }
+                      }
+                    } catch (e) {
+                      debugPrint('❌ API check error: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error checking API URL: ${e.toString().substring(0, math.min(150, e.toString().length))}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(color: Colors.blue[400]!),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.link, size: 16, color: Colors.blue),
+                      SizedBox(width: 8),
+                      Text('Check API URL Config'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Connection test button
+                OutlinedButton(
+                  onPressed: () async {
+                    debugPrint('🔍 Testing connection from: ${Uri.base}');
+                    try {
+                      try {
+                        final session = await SupabaseConfig.client.auth.currentSession;
+                        debugPrint('✅ Auth API test successful: ${session != null ? 'Has session' : 'No session'}');
+                      } catch (e) {
+                        debugPrint('⚠️ Auth API test error: $e');
+                      }
+
+                      try {
+                        final result = await SupabaseConfig.client
+                            .from('athletes')
+                            .select('id')
+                            .limit(1)
+                            .then((response) {
+                              debugPrint('✅ Database connection test successful: $response');
+                              return response;
+                            });
+                      } catch (e) {
+                        // If table doesn't exist, that's okay - we just want to test connection
+                        if (e.toString().contains('does not exist')) {
+                          debugPrint('✅ Database connection successful (table not found, which is expected)');
+                        } else {
+                          debugPrint('⚠️ Database test error: $e');
+                        }
+                      }
+
+                      debugPrint('🔍 Checking config in SupabaseConfig:');
+                      debugPrint('🔍 Client initialized: ${SupabaseConfig.client != null}');
+
+                      debugPrint('''
+==== DEBUGGING 404 ERRORS ====
+If signup is failing with 404, check these:
+1. Ensure your .env has SUPABASE_URL and SUPABASE_ANON_KEY correctly set
+2. Verify SUPABASE_URL doesn't have extra paths or trailing slashes
+3. Check CORS settings in Supabase Dashboard for your app URL
+==== END DEBUGGING INFO ====
+''');
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Check console for connection test results'),
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
+                    } catch (e) {
+                      debugPrint('❌ Connection test failed: $e');
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Connection test failed: $e'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 5),
+                        ),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    side: BorderSide(color: Colors.grey[400]!),
+                  ),
+                  child: const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.wifi_tethering, size: 20),
+                      SizedBox(width: 8),
+                      Text('Test Connection'),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Links section
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => context.go(RouteConstants.register),
+                      child: const Text('Create an account'),
+                    ),
+                    TextButton(
+                      onPressed: () => context.go(RouteConstants.passwordReset),
+                      child: const Text('Forgot password?'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'By continuing, you agree to our Terms of Service and Privacy Policy.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
               ],
             ),
           ),
-          const SizedBox(height: 12),
-          // Clear storage button
-          OutlinedButton(
-            onPressed: () async {
-              try {
-                debugPrint('🧹 Clearing stored auth state...');
-                // Use the WebStorage directly
-                await WebStorage.clearAuthData();
-                
-                // Also reset the AuthBloc state
-                context.read<AuthBloc>().add(const AuthCheckRequested());
-                
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Auth state cleared!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error clearing state: $e'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              side: BorderSide(color: Colors.grey[400]!),
-            ),
-            child: const Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.cleaning_services, size: 16),
-                SizedBox(width: 8),
-                Text('Reset App State'),
-              ],
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

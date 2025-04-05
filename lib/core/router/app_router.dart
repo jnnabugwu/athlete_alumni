@@ -40,19 +40,29 @@ final appRouter = GoRouter(
     debugPrint("Router.redirect extra: ${state.extra}");
     
     // Development bypass
-    // Check if this is a direct navigation from the Dev Login button
     final bool isDevBypass = state.extra != null && 
                              state.extra is Map && 
                              (state.extra as Map).containsKey('devBypass') &&
                              (state.extra as Map)['devBypass'] == true;
     
-    // Skip all auth checks if this is a dev bypass
     if (isDevBypass) {
-      debugPrint("Router: Dev bypass detected, skipping auth checks for ${state.uri.path}");
-      return null; // Don't redirect
+      debugPrint("Router: Dev bypass detected, skipping auth checks");
+      return null;
+    }
+
+    // Get current auth state
+    final authBloc = sl<AuthBloc>();
+    final authState = authBloc.state;
+    final authStatus = authState.status;
+    debugPrint("Router: Current auth status = $authStatus");
+    
+    // Don't redirect while we're waiting for the auth state
+    if (authStatus == AuthStatus.initial || authStatus == AuthStatus.loading) {
+      debugPrint("Router: Auth state is $authStatus, waiting for final state");
+      return null;
     }
     
-    final isLoggedIn = _isAuthenticated();
+    final isLoggedIn = authStatus == AuthStatus.authenticated;
     debugPrint("Router: isLoggedIn = $isLoggedIn");
     
     final isGoingToLogin = state.uri.path == RouteConstants.login || 
@@ -77,22 +87,22 @@ final appRouter = GoRouter(
   routes: [
     GoRoute(
       path: RouteConstants.home,
-      builder: (context, state) => BlocProvider(
-        create: (_) => sl<AuthBloc>(),
+      builder: (context, state) => BlocProvider.value(
+        value: sl<AuthBloc>(),
         child: const HomePage(),
       ),
     ),
     GoRoute(
       path: RouteConstants.login,
-      builder: (context, state) => BlocProvider(
-        create: (_) => sl<AuthBloc>(),
+      builder: (context, state) => BlocProvider.value(
+        value: sl<AuthBloc>(),
         child: const LoginPage(),
       ),
     ),
     GoRoute(
       path: RouteConstants.register,
-      builder: (context, state) => BlocProvider(
-        create: (_) => sl<AuthBloc>(),
+      builder: (context, state) => BlocProvider.value(
+        value: sl<AuthBloc>(),
         child: const RegisterPage(),
       ),
     ),
