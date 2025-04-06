@@ -52,6 +52,12 @@ class ProfilePage extends StatelessWidget {
             ),
         ],
       ),
+      floatingActionButton: isOwnProfile && onEditPressed != null ? FloatingActionButton.extended(
+        onPressed: onEditPressed,
+        icon: const Icon(Icons.edit),
+        label: const Text('Edit Profile'),
+        tooltip: 'Edit your profile information',
+      ) : null,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -65,8 +71,8 @@ class ProfilePage extends StatelessWidget {
             // Type-specific information based on athlete status
             TypeSpecificSection(athlete: athlete),
             
-            // Edit profile button if viewing own profile
-            if (isOwnProfile) _buildEditButton(context),
+            // Edit profile button if viewing own profile (keeping this too for visibility)
+            if (isOwnProfile && onEditPressed != null) _buildEditButton(context),
             
             // Return to home button
             _buildHomeButton(context),
@@ -91,6 +97,8 @@ class ProfilePage extends StatelessWidget {
           icon: const Icon(Icons.edit),
           label: const Text('Edit Profile'),
           style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.primary,
+            foregroundColor: Theme.of(context).colorScheme.onPrimary,
             padding: const EdgeInsets.symmetric(
               horizontal: 24, 
               vertical: 12,

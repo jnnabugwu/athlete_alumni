@@ -51,4 +51,14 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Athlete?> getCurrentAthlete() async {
     return await remoteDataSource.getCurrentAthlete();
   }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    await remoteDataSource.sendPasswordResetEmail(email);
+  }
+
+  @override
+  Future<void> resetPassword(String password, String token) async {
+    await remoteDataSource.resetPassword(password, token);
+  }
 }

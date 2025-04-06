@@ -24,6 +24,10 @@ abstract class AuthRemoteDataSource {
   Future<bool> isSignedIn();
   
   Future<Athlete?> getCurrentAthlete();
+  
+  Future<void> sendPasswordResetEmail(String email);
+  
+  Future<void> resetPassword(String password, String token);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -293,6 +297,54 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       }
       
       return false;
+    }
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      debugPrint('🔑 Sending password reset email to: $email');
+      
+      // Get the app's base URL - in a real app, this should be configured
+      // based on your deployment environment
+      String baseUrl = kDebugMode ? 'http://localhost:3000' : 'https://adak-14f54.web.app';
+      
+      await supabaseClient.auth.resetPasswordForEmail(
+        email,
+        redirectTo: '$baseUrl/password-reset/recovery', // This URL should match your route structure
+      );
+      debugPrint('✅ Password reset email sent successfully');
+      debugPrint('📧 Reset link will redirect to: $baseUrl/password-reset/recovery');
+    } catch (e) {
+      debugPrint('❌ Failed to send password reset email: $e');
+      throw AuthException('Failed to send password reset email: ${e.toString()}');
+    }
+  }
+  
+  @override
+  Future<void> resetPassword(String password, String token) async {
+    try {
+      debugPrint('🔑 Resetting password with token');
+      
+      // If we have a token, we should update the user's password with that token
+      // Otherwise, we assume the user is already authenticated (from the reset link click)
+      if (token.isNotEmpty) {
+        // Process with token from URL
+        await supabaseClient.auth.verifyOTP(
+          token: token,
+          type: OtpType.recovery,
+        );
+      }
+      
+      // Once authenticated or verified, update the password
+      await supabaseClient.auth.updateUser(
+        UserAttributes(password: password),
+      );
+      
+      debugPrint('✅ Password reset successfully');
+    } catch (e) {
+      debugPrint('❌ Failed to reset password: $e');
+      throw AuthException('Failed to reset password: ${e.toString()}');
     }
   }
 }

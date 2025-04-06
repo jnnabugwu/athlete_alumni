@@ -7,6 +7,8 @@ enum AuthStatus {
   loading,
   error,
   emailVerificationSent,
+  passwordResetEmailSent,
+  passwordResetSuccess,
 }
 
 class AuthState extends Equatable {

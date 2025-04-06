@@ -23,6 +23,8 @@ import 'package:athlete_alumni/core/router/route_constants.dart';
 // import 'package:athlete_alumni/features/athletes/presentation/pages/athlete_detail_page.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/login_page.dart';
 import 'package:athlete_alumni/features/auth/presentation/pages/register_page.dart';
+import 'package:athlete_alumni/features/auth/presentation/pages/password_reset_page.dart';
+import 'package:athlete_alumni/features/auth/presentation/pages/password_reset_form_page.dart';
 import 'package:athlete_alumni/features/home/presentation/pages/home_page.dart';
 import 'package:athlete_alumni/features/athletes/presentation/pages/athletes_page.dart';
 
@@ -68,17 +70,22 @@ final appRouter = GoRouter(
     final isLoggedIn = authStatus == AuthStatus.authenticated;
     debugPrint("Router: isLoggedIn = $isLoggedIn");
     
-    final isGoingToLogin = state.uri.path == RouteConstants.login || 
-                          state.uri.path == RouteConstants.register;
+    // Check if the user is going to public routes that don't require authentication
+    final isPublicRoute = state.uri.path == RouteConstants.login || 
+                          state.uri.path == RouteConstants.register ||
+                          state.uri.path == RouteConstants.passwordReset ||
+                          state.uri.path.startsWith('/password-reset/');
     
-    // If not logged in and not going to login/register, redirect to login
-    if (!isLoggedIn && !isGoingToLogin) {
-      debugPrint("Router: Not logged in and not going to login/register, redirecting to login");
+    debugPrint("Router: isPublicRoute = $isPublicRoute for ${state.uri.path}");
+    
+    // If not logged in and not going to a public route, redirect to login
+    if (!isLoggedIn && !isPublicRoute) {
+      debugPrint("Router: Not logged in and not going to a public route, redirecting to login");
       return RouteConstants.login;
     }
     
     // If logged in and going to login/register, redirect to home
-    if (isLoggedIn && isGoingToLogin) {
+    if (isLoggedIn && (state.uri.path == RouteConstants.login || state.uri.path == RouteConstants.register)) {
       debugPrint("Router: Logged in and going to login/register, redirecting to home");
       return RouteConstants.home;
     }
@@ -108,6 +115,23 @@ final appRouter = GoRouter(
         value: sl<AuthBloc>(),
         child: const RegisterPage(),
       ),
+    ),
+    GoRoute(
+      path: RouteConstants.passwordReset,
+      builder: (context, state) => BlocProvider.value(
+        value: sl<AuthBloc>(),
+        child: const PasswordResetPage(),
+      ),
+    ),
+    GoRoute(
+      path: RouteConstants.passwordResetForm,
+      builder: (context, state) {
+        final token = state.pathParameters['token'] ?? '';
+        return BlocProvider.value(
+          value: sl<AuthBloc>(),
+          child: PasswordResetFormPage(token: token),
+        );
+      },
     ),
     
     // Profile routes

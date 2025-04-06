@@ -23,6 +23,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignUpRequested>(_onAuthSignUpRequested);
     on<AuthSignInRequested>(_onAuthSignInRequested);
     on<UpdateAthleteProfile>(_onUpdateAthleteProfile);
+    on<AuthPasswordResetRequested>(_onAuthPasswordResetRequested);
+    on<AuthNewPasswordSubmitted>(_onAuthNewPasswordSubmitted);
 
     // Initialize auth state listener
     _authSubscription = WebStorage.onAuthStateChange.listen((_) {
@@ -272,6 +274,57 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       debugPrint('AuthBloc: Error updating athlete profile: $e');
       add(AuthErrorOccurred('Failed to update athlete profile: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onAuthPasswordResetRequested(
+    AuthPasswordResetRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('🔑 AuthBloc: Processing password reset request for ${event.email}');
+      emit(state.copyWith(status: AuthStatus.loading));
+      
+      await _authRepository.sendPasswordResetEmail(event.email);
+      
+      debugPrint('✅ AuthBloc: Password reset email sent to ${event.email}');
+      
+      emit(state.copyWith(
+        status: AuthStatus.passwordResetEmailSent,
+        errorMessage: null,
+      ));
+    } catch (e) {
+      debugPrint('❌ AuthBloc: Error sending password reset email: $e');
+      add(AuthErrorOccurred(e.toString()));
+    }
+  }
+
+  Future<void> _onAuthNewPasswordSubmitted(
+    AuthNewPasswordSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('🔑 AuthBloc: Processing new password submission');
+      emit(state.copyWith(status: AuthStatus.loading));
+      
+      await _authRepository.resetPassword(event.password, event.token);
+      
+      debugPrint('✅ AuthBloc: Password reset successfully');
+      
+      emit(state.copyWith(
+        status: AuthStatus.passwordResetSuccess,
+        errorMessage: null,
+      ));
+      
+      // After successfully resetting password, transition to unauthenticated
+      // so user can login with new password
+      emit(state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: null,
+      ));
+    } catch (e) {
+      debugPrint('❌ AuthBloc: Error resetting password: $e');
+      add(AuthErrorOccurred(e.toString()));
     }
   }
 
