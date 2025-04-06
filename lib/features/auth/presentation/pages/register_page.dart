@@ -18,7 +18,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _usernameController = TextEditingController();
   final _collegeController = TextEditingController();
   final _scrollController = ScrollController();
   AthleteStatus _athleteStatus = AthleteStatus.current;
@@ -28,7 +27,6 @@ class _RegisterPageState extends State<RegisterPage> {
     _emailController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
-    _usernameController.dispose();
     _collegeController.dispose();
     _scrollController.dispose();
     super.dispose();
@@ -36,17 +34,12 @@ class _RegisterPageState extends State<RegisterPage> {
 
   void _handleRegister() {
     if (_formKey.currentState!.validate()) {
-      debugPrint('👤 Registration requested with email: ${_emailController.text}, name: ${_fullNameController.text}');
-      debugPrint('Status: ${_athleteStatus.name}, College: ${_collegeController.text}');
+      debugPrint('👤 Registration requested with email: ${_emailController.text}');
       
       context.read<AuthBloc>().add(
             AuthSignUpRequested(
               email: _emailController.text,
               password: _passwordController.text,
-              fullName: _fullNameController.text,
-              username: _usernameController.text,
-              college: _collegeController.text,
-              athleteStatus: _athleteStatus,
             ),
           );
     }
@@ -244,22 +237,10 @@ class _RegisterPageState extends State<RegisterPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildFormField(
-                label: 'Full Name',
-                controller: _fullNameController,
-                hintText: 'Enter your full name',
-              ),
-              const SizedBox(height: 24),
-              _buildFormField(
                 label: 'Email',
                 controller: _emailController,
                 hintText: 'Enter your email',
                 keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 24),
-              _buildFormField(
-                label: 'Username',
-                controller: _usernameController,
-                hintText: 'Choose a username',
               ),
               const SizedBox(height: 24),
               _buildFormField(
@@ -268,14 +249,6 @@ class _RegisterPageState extends State<RegisterPage> {
                 hintText: 'Create a password',
                 isPassword: true,
               ),
-              const SizedBox(height: 24),
-              _buildFormField(
-                label: 'College',
-                controller: _collegeController,
-                hintText: 'Enter your college name',
-              ),
-              const SizedBox(height: 24),
-              _buildAthleteStatusSelector(),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: state.status == AuthStatus.loading ? null : _handleRegister,
@@ -313,9 +286,6 @@ class _RegisterPageState extends State<RegisterPage> {
                   if (_emailController.text.isEmpty) {
                     _emailController.text = 'test.user@example.com';
                     _passwordController.text = 'password123';
-                    _fullNameController.text = 'Test User';
-                    _usernameController.text = 'testuser';
-                    _collegeController.text = 'Test University';
                   }
                   // Skip verification and go directly to home page
                   context.go(RouteConstants.home, extra: {'devBypass': true});

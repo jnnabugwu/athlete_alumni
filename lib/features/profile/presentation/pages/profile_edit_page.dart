@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../../../core/models/athlete.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileEditPage extends StatefulWidget {
   final Athlete athlete;
@@ -17,6 +18,8 @@ class ProfileEditPage extends StatefulWidget {
 }
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
+  late TextEditingController _fullNameController;
+  late TextEditingController _usernameController;
   late TextEditingController _universityController;
   late TextEditingController _sportController;
   late AthleteStatus _athleteStatus;
@@ -26,6 +29,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   String? _profileImageUrl;
   File? _profileImageFile;
   List<String> _achievements = [];
+  String _email = '';
 
   final _formKey = GlobalKey<FormState>();
   bool _hasChanges = false;
@@ -33,6 +37,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   void initState() {
     super.initState();
+    _fullNameController = TextEditingController(text: widget.athlete.name ?? '');
+    _usernameController = TextEditingController(text: widget.athlete.username ?? '');
     _universityController = TextEditingController(text: widget.athlete.university ?? '');
     _sportController = TextEditingController(text: widget.athlete.sport ?? '');
     _athleteStatus = widget.athlete.status;
@@ -41,9 +47,34 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _graduationYear = widget.athlete.graduationYear;
     _profileImageUrl = widget.athlete.profileImageUrl;
     _achievements = widget.athlete.achievements?.toList() ?? [];
+    
+    // Initialize email from athlete object or try to get it from Supabase
+    _initializeEmail();
 
+    _fullNameController.addListener(_onFormChanged);
+    _usernameController.addListener(_onFormChanged);
     _universityController.addListener(_onFormChanged);
     _sportController.addListener(_onFormChanged);
+  }
+
+  void _initializeEmail() {
+    // First try to get email from athlete object
+    if (widget.athlete.email != null && widget.athlete.email!.isNotEmpty) {
+      _email = widget.athlete.email!;
+      debugPrint('📧 Email from athlete object: $_email');
+      return;
+    }
+    
+    // If not available, try to get it from Supabase auth
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null && user.email != null && user.email!.isNotEmpty) {
+      setState(() {
+        _email = user.email!;
+        debugPrint('📧 Email from Supabase auth: $_email');
+      });
+    } else {
+      debugPrint('⚠️ Could not find email from athlete object or Supabase auth');
+    }
   }
 
   void _onFormChanged() {
@@ -54,6 +85,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   @override
   void dispose() {
+    _fullNameController.dispose();
+    _usernameController.dispose();
     _universityController.dispose();
     _sportController.dispose();
     super.dispose();
@@ -93,22 +126,35 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   void _selectGraduationYear() async {
-    final initialDate = _graduationYear ?? DateTime.now();
-    final firstDate = DateTime(DateTime.now().year - 50);
-    final lastDate = DateTime(DateTime.now().year + 10);
+    final initialYear = _graduationYear?.year ?? DateTime.now().year;
     
-    final DateTime? picked = await showDatePicker(
+    final int? selectedYear = await showDialog<int>(
       context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      initialEntryMode: DatePickerEntryMode.input,
-      initialDatePickerMode: DatePickerMode.year,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Graduation Year'),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: ListView.builder(
+              itemCount: 20,
+              itemBuilder: (BuildContext context, int index) {
+                final year = DateTime.now().year - 30 + index;
+                return ListTile(
+                  title: Text(year.toString(), textAlign: TextAlign.center),
+                  selected: year == initialYear,
+                  onTap: () => Navigator.of(context).pop(year),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
     
-    if (picked != null && picked != _graduationYear) {
+    if (selectedYear != null) {
       setState(() {
-        _graduationYear = DateTime(picked.year);
+        _graduationYear = DateTime(selectedYear);
         _hasChanges = true;
       });
     }
@@ -117,6 +163,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   void _saveChanges() {
     if (_formKey.currentState?.validate() ?? false) {
       final updatedAthlete = widget.athlete.copyWith(
+        name: _fullNameController.text,
+        username: _usernameController.text,
+        email: _email,
         status: _athleteStatus,
         major: _selectedMajor,
         career: _selectedCareer,
@@ -127,7 +176,15 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         profileImageUrl: _profileImageUrl,
       );
       
-      debugPrint("ProfileEditPage: Saving changes for athlete ID: ${updatedAthlete.id}");
+      // Show notification that changes are being saved
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saving changes... You will be redirected to the home page.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      debugPrint("ProfileEditPage: Saving changes for athlete ID: ${updatedAthlete.id}, email: ${updatedAthlete.email}");
       widget.onSave(updatedAthlete);
       
       // Navigation will be handled by the parent EditProfileScreen
@@ -268,7 +325,53 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Basic Information',
+          'Personal Information',
+          style: Theme.of(context).textTheme.titleLarge,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _fullNameController,
+          decoration: const InputDecoration(
+            labelText: 'Full Name',
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter your full name';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _usernameController,
+          decoration: const InputDecoration(
+            labelText: 'Username',
+            border: OutlineInputBorder(),
+          ),
+          validator: (value) {
+            if (value == null || value.isEmpty) {
+              return 'Please enter a username';
+            }
+            return null;
+          },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: _email,
+          readOnly: true,
+          enabled: false,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            border: OutlineInputBorder(),
+            fillColor: Color(0xFFF5F5F5),
+            filled: true,
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        Text(
+          'University Information',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),

@@ -5,6 +5,7 @@ class Athlete {
   final String id;
   final String name;
   final String email;
+  final String? username;
   final AthleteStatus status;
   final AthleteMajor major;
   final AthleteCareer career;
@@ -18,6 +19,7 @@ class Athlete {
     required this.id,
     required this.name,
     required this.email,
+    this.username,
     required this.status,
     required this.major,
     required this.career,
@@ -33,6 +35,7 @@ class Athlete {
     String? id,
     String? name,
     String? email,
+    String? username,
     AthleteStatus? status,
     AthleteMajor? major,
     AthleteCareer? career,
@@ -46,6 +49,7 @@ class Athlete {
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
+      username: username ?? this.username,
       status: status ?? this.status,
       major: major ?? this.major,
       career: career ?? this.career,
@@ -70,6 +74,7 @@ class Athlete {
       id: json['id'] as String,
       name: getValue<String>('name', 'full_name') ?? '',
       email: getValue<String>('email', 'email') ?? '',
+      username: getValue<String>('username', 'username'),
       status: _parseStatus(json),
       major: _parseMajor(json),
       career: _parseCareer(json),
@@ -173,6 +178,7 @@ class Athlete {
       'id': id,
       'name': name,
       'email': email,
+      'username': username,
       'status': status.name,
       // Store major and career as display names for better readability
       'major': major.displayName,
@@ -187,6 +193,6 @@ class Athlete {
 
   @override
   String toString() {
-    return 'Athlete(id: $id, name: $name, status: ${status.displayName}, major: ${major.displayName}, career: ${career.displayName})';
+    return 'Athlete(id: $id, name: $name, username: $username, status: ${status.displayName}, major: ${major.displayName}, career: ${career.displayName})';
   }
 } 

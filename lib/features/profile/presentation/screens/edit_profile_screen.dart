@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/athlete.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../core/router/route_constants.dart';
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_edit_page.dart';
@@ -31,12 +32,15 @@ class EditProfileScreen extends StatelessWidget {
           
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
+            const SnackBar(
+              content: Text('Profile updated successfully. Changes may take a moment to appear.'),
+              duration: Duration(seconds: 3),
+            ),
           );
           
-          // Explicitly navigate to the profile page instead of just popping
-          debugPrint('EditProfileScreen: Navigating to profile page with ID: ${state.athlete.id}');
-          context.go('/profile/${state.athlete.id}');
+          // Navigate to the home page instead of the profile page
+          debugPrint('EditProfileScreen: Navigating to home page after profile update');
+          context.go(RouteConstants.home);
         } else if (state is EditProfileSaveFailure) {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(

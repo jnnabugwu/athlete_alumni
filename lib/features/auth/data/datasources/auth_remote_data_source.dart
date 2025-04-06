@@ -13,10 +13,10 @@ abstract class AuthRemoteDataSource {
   Future<void> signUp({
     required String email,
     required String password,
-    required String fullName,
-    required String username,
-    required String college,
-    required AthleteStatus athleteStatus,
+    String? fullName,
+    String? username,
+    String? college,
+    AthleteStatus? athleteStatus,
   });
 
   Future<void> signOut();
@@ -90,13 +90,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<void> signUp({
     required String email,
     required String password,
-    required String fullName,
-    required String username,
-    required String college,
-    required AthleteStatus athleteStatus,
+    String? fullName,
+    String? username,
+    String? college,
+    AthleteStatus? athleteStatus,
   }) async {
     try {
-      debugPrint('📝 STEP 1: Attempting registration with email: $email, name: $fullName');
+      debugPrint('📝 STEP 1: Attempting registration with email: $email');
+      if (fullName != null) debugPrint('Name: $fullName');
+      if (college != null) debugPrint('College: $college');
+      if (athleteStatus != null) debugPrint('Status: ${athleteStatus.name}');
       
       // Step 1: Create auth user with very detailed error handling
       AuthResponse? authResponse;
@@ -106,6 +109,14 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         authResponse = await supabaseClient.auth.signUp(
           email: email,
           password: password,
+          data: {
+            'email': email,
+            'full_name': fullName,
+            'username': username,
+            'college': college,
+            'athlete_status': athleteStatus?.name,
+            'registration_date': DateTime.now().toIso8601String(),
+          }
         );
         
         // Detailed logging of the auth response
@@ -124,60 +135,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       } catch (authError) {
         debugPrint('❌ STEP ERROR: Auth creation failed: $authError');
         debugPrint('❌ Error type: ${authError.runtimeType}');
-        debugPrint('❌ Error message: ${authResponse.toString()}');
         throw AuthException('Auth user creation failed: ${authError.toString()}');
       }
       
-      // Step 2: Only proceed to profile creation if we have a valid user
-      if (userId != null) {
-        debugPrint('📊 STEP 5: Creating athlete profile in database');
-        try {
-          // Create athlete data
-          final athleteData = {
-            'id': userId,
-            'email': email,
-            'full_name': fullName,
-            'username': username,
-            'college': college,
-            'athlete_status': athleteStatus.name,
-            'created_at': DateTime.now().toIso8601String(),
-            'updated_at': DateTime.now().toIso8601String(),
-          };
-          
-          debugPrint('📋 STEP 6: Athlete data prepared: $athleteData');
-          
-          // Attempt to insert profile data with explicit timeout
-          try {
-            debugPrint('⏱️ STEP 7: Inserting profile data with 10-second timeout');
-            await supabaseClient.from('athletes')
-                .insert(athleteData)
-                .timeout(const Duration(seconds: 10));
-            debugPrint('✅ STEP 8: Athlete profile created successfully');
-          } catch (profileError) {
-            debugPrint('⚠️ STEP ERROR: Database error creating athlete profile: $profileError');
-            debugPrint('⚠️ Error type: ${profileError.runtimeType}');
-            
-            // Don't rethrow - still allow auth to succeed
-            // Mark user as needing profile completion later
-            try {
-              debugPrint('🔄 STEP 9: Setting metadata flag for profile creation needed');
-              await supabaseClient.auth.updateUser(UserAttributes(
-                data: {'profile_pending': true}
-              ));
-              debugPrint('✅ STEP 10: User metadata updated to indicate profile pending');
-            } catch (metaError) {
-              debugPrint('⚠️ STEP ERROR: Could not set profile metadata: $metaError');
-            }
-          }
-        } catch (wrapperError) {
-          debugPrint('⚠️ STEP ERROR: Outer wrapper error in profile creation: $wrapperError');
-          // Still don't fail the auth process
-        }
-      }
-      
-      // If we've made it this far, consider the registration successful
-      // even if the profile wasn't created
-      debugPrint('✅ STEP FINAL: Registration completed successfully');
+      // Note: We're not creating the athlete profile here anymore
+      // That will be done later when the user completes their profile
+      debugPrint('✅ STEP 5: Auth user created successfully. Profile will be created later.');
       
     } catch (e) {
       debugPrint('❌ MAIN ERROR: Unexpected error during registration: $e');
@@ -213,7 +176,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final user = supabaseClient.auth.currentUser;
       if (user == null) return null;
       
-      debugPrint('🔍 Checking for athlete profile for user ID: ${user.id}');
+      debugPrint('🔍 Checking for athlete profile for user ID: ${user.id} and email: ${user.email}');
 
       try {
         // Try to get existing athlete profile
@@ -233,28 +196,41 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         
         // Get user metadata
         final metadata = user.userMetadata;
-        if (metadata == null) {
-          debugPrint('⚠️ No user metadata available to create profile');
-          return null;
-        }
         
         // Extract available fields from metadata
-        final String? fullName = metadata['full_name'] as String?;
-        final String? username = metadata['username'] as String?;
-        final String? college = metadata['college'] as String?;
-        final String? athleteStatusStr = metadata['athlete_status'] as String?;
+        final String? fullName = metadata?['full_name'] as String?;
+        String? username = metadata?['username'] as String?;
+        final String? college = metadata?['college'] as String?;
+        final String? athleteStatusStr = metadata?['athlete_status'] as String?;
         
-        // If we don't have enough data, return null
-        if (username == null) {
-          debugPrint('⚠️ Insufficient metadata to create profile - missing username');
-          return null;
+        // Generate a default username if none is found
+        if (username == null || username.isEmpty) {
+          debugPrint('⚠️ No username found, generating default username');
+          // Use email prefix or a random string as username
+          username = user.email?.split('@').first ?? 'user_${DateTime.now().millisecondsSinceEpoch}';
+          
+          // Ensure it's unique by adding a timestamp
+          username = '${username}_${DateTime.now().millisecondsSinceEpoch % 10000}';
+          
+          debugPrint('📝 Generated username: $username');
+          
+          // Try to update the metadata with the generated username
+          try {
+            await supabaseClient.auth.updateUser(UserAttributes(
+              data: {
+                'username': username,
+              }
+            ));
+          } catch (e) {
+            debugPrint('⚠️ Could not update user metadata with generated username: $e');
+          }
         }
         
         // Create minimal athlete data
         final athleteData = {
           'id': user.id,
           'email': user.email,
-          'full_name': fullName ?? '',
+          'full_name': fullName ?? user.email?.split('@').first ?? 'User',
           'username': username,
           'college': college,
           'athlete_status': athleteStatusStr ?? 'current',
