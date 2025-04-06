@@ -2,58 +2,38 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:js' as js;
+import '../../utils/environment.dart';
 
 class SupabaseConfig {
   static String get supabaseUrl {
     try {
-      if (kIsWeb) {
-        if (js.context['ENV'] == null) {
-          debugPrint('❌ ERROR: window.ENV is not defined! Check if config.js is loaded');
-          throw Exception('window.ENV is not defined');
-        }
-        final env = js.context['ENV'];
-        if (env['SUPABASE_URL'] == null) {
-          debugPrint('❌ ERROR: SUPABASE_URL not found in window.ENV');
-          throw Exception('SUPABASE_URL not found in config');
-        }
-        final url = env['SUPABASE_URL'] as String;
-        debugPrint('✅ Loaded Supabase URL from web config: $url');
-        return url;
-      }
-      return dotenv.env['SUPABASE_URL'] ?? '';
+      // Use our Environment utility class that has fallbacks
+      return Environment.supabaseUrl;
     } catch (e) {
       debugPrint('❌ Error getting Supabase URL: $e');
-      rethrow;
+      // Return fallback directly here as a last resort
+      return 'https://kszcjniwbqxyndpsajhr.supabase.co/';
     }
   }
 
   static String get supabaseAnonKey {
     try {
-      if (kIsWeb) {
-        if (js.context['ENV'] == null) {
-          debugPrint('❌ ERROR: window.ENV is not defined! Check if config.js is loaded');
-          throw Exception('window.ENV is not defined');
-        }
-        final env = js.context['ENV'];
-        if (env['SUPABASE_ANON_KEY'] == null) {
-          debugPrint('❌ ERROR: SUPABASE_ANON_KEY not found in window.ENV');
-          throw Exception('SUPABASE_ANON_KEY not found in config');
-        }
-        final key = env['SUPABASE_ANON_KEY'] as String;
-        debugPrint('✅ Loaded Supabase Anon Key from web config');
-        return key;
-      }
-      return dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+      // Use our Environment utility class that has fallbacks
+      return Environment.supabaseAnonKey;
     } catch (e) {
       debugPrint('❌ Error getting Supabase Anon Key: $e');
-      rethrow;
+      // Return fallback directly here as a last resort
+      return 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzemNqbml3YnF4eW5kcHNhamhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM2NTEzNjQsImV4cCI6MjA1OTIyNzM2NH0.UnN4xuo783XDrR5nQTlwZAIcW6DqrbFY3bo4nssOvu4';
     }
   }
 
   static Future<void> initialize() async {
     try {
       if (!kIsWeb) {
-        await dotenv.load();
+        await dotenv.load().catchError((e) {
+          debugPrint('⚠️ Warning: Could not load .env file: $e');
+          debugPrint('Using fallback values instead');
+        });
       }
       
       final url = supabaseUrl;
@@ -63,10 +43,14 @@ class SupabaseConfig {
       debugPrint('📍 URL Length: ${url.length}');
       debugPrint('🔑 Key Length: ${key.length}');
       
+      if (url.isEmpty || key.isEmpty) {
+        throw AssertionError('Supabase URL or Anon Key is empty. Check your configuration.');
+      }
+      
       await Supabase.initialize(
         url: url,
         anonKey: key,
-        debug: true,
+        debug: kDebugMode,
       );
       
       // Test the connection
@@ -74,7 +58,7 @@ class SupabaseConfig {
       debugPrint('🔍 Testing connection...');
       try {
         // Simple test query that should always work
-        await client.from('_dummy_test').select().limit(1);
+        await client.from('athletes').select('id').limit(1);
         debugPrint('✅ Connection test successful!');
       } catch (e) {
         debugPrint('⚠️ Connection test failed: $e');

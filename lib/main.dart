@@ -3,49 +3,86 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:athlete_alumni/core/di/injection.dart' as di;
 import 'package:athlete_alumni/core/router/app_router.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:athlete_alumni/utils/environment.dart';
+import 'package:athlete_alumni/core/config/supabase_config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Load .env file first
   try {
-    await dotenv.load(fileName: ".env");
-    print('✅ Loaded .env file successfully');
+    // Initialize environment variables first
+    await Environment.initialize();
+    if (kDebugMode) {
+      print('✅ Environment initialized successfully');
+      
+      // Get and log Supabase configuration
+      final supabaseUrl = Environment.supabaseUrl;
+      print('🔍 Supabase URL configured as: $supabaseUrl');
+      print('🔍 URL length: ${supabaseUrl.length}');
+    }
     
-    // Get and log Supabase configuration (without the actual key)
-    final supabaseUrl = dotenv.get('SUPABASE_URL');
-    print('🔍 Supabase URL configured as: $supabaseUrl');
-    
-    // Initialize Supabase
-    await Supabase.initialize(
-      url: supabaseUrl,
-      anonKey: dotenv.get('SUPABASE_ANON_KEY'),
-    );
-    print('✅ Supabase initialized successfully');
+    // Initialize Supabase using our config
+    await SupabaseConfig.initialize();
+    if (kDebugMode) {
+      print('✅ Supabase initialized successfully');
+    }
 
     // Initialize dependency injection
     await di.init();
-    print('✅ Dependency injection initialized');
+    if (kDebugMode) {
+      print('✅ Dependency injection initialized');
+    }
 
     runApp(const MyApp());
 
-  } catch (e) {
-    print('❌ Error during initialization:');
-    print('Error type: ${e.runtimeType}');
-    print('Error details: $e');
-    
-    if (e is Error) {
-      print('Stack trace: ${e.stackTrace}');
+  } catch (e, stackTrace) {
+    if (kDebugMode) {
+      print('❌ Error during initialization:');
+      print('Error type: ${e.runtimeType}');
+      print('Error details: $e');
+      print('Stack trace: $stackTrace');
     }
     
     // Show error UI instead of crashing
     runApp(MaterialApp(
       home: Scaffold(
         body: Center(
-          child: Text(
-            'Error initializing app: ${e.toString()}',
-            style: const TextStyle(color: Colors.red),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Error initializing app:',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  e.toString(),
+                  style: const TextStyle(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed: () {
+                    // This is a simple restart attempt
+                    // In a real app, you'd want a more robust solution
+                    main();
+                  },
+                  child: const Text('Try Again'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
