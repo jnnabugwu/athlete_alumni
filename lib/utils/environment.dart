@@ -7,6 +7,10 @@ class Environment {
   /// Initialize environment variables
   static Future<void> initialize() async {
     try {
+      if (kDebugMode) {
+        print('Environment: Initializing environment - isWeb: $kIsWeb');
+      }
+      
       // Only try to load .env file if not on web
       if (!kIsWeb) {
         // For non-web platforms, load from .env file
@@ -17,8 +21,21 @@ class Environment {
           }
         });
       } else {
+        // In web mode, log info about the environment
         if (kDebugMode) {
           print('Running on web, using web config.js environment values');
+          try {
+            bool hasEnvObj = js.context.hasProperty('ENV');
+            print('Web ENV object exists: $hasEnvObj');
+            if (hasEnvObj) {
+              bool hasUrl = js.context['ENV'].hasProperty('SUPABASE_URL');
+              bool hasKey = js.context['ENV'].hasProperty('SUPABASE_ANON_KEY');
+              print('ENV contains SUPABASE_URL: $hasUrl');
+              print('ENV contains SUPABASE_ANON_KEY: $hasKey');
+            }
+          } catch (e) {
+            print('Error checking web ENV: $e');
+          }
         }
       }
     } catch (e) {
@@ -33,14 +50,39 @@ class Environment {
     try {
       // For web, try to get from window.ENV
       if (kIsWeb) {
-        // Check if window.ENV exists and has the key
-        if (js.context.hasProperty('ENV') && js.context['ENV'].hasProperty(key)) {
-          return js.context['ENV'][key] as String;
+        try {
+          // Check if window.ENV exists and has the key
+          if (js.context.hasProperty('ENV') && js.context['ENV'].hasProperty(key)) {
+            String value = js.context['ENV'][key] as String;
+            if (kDebugMode) {
+              print('Retrieved $key from web ENV: ${value.substring(0, 10)}...');
+            }
+            return value;
+          } else {
+            if (kDebugMode) {
+              print('Key $key not found in web ENV, using fallback');
+            }
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            print('Error accessing web ENV for key $key: $e');
+          }
         }
       }
       
       // For non-web or if web ENV doesn't have the key, try dotenv
-      return dotenv.env[key] ?? fallback;
+      String? value = dotenv.env[key];
+      if (value != null) {
+        if (kDebugMode) {
+          print('Retrieved $key from dotenv: ${value.substring(0, 10)}...');
+        }
+        return value;
+      }
+      
+      if (kDebugMode) {
+        print('Key $key not found in any source, using fallback value');
+      }
+      return fallback;
     } catch (e) {
       if (kDebugMode) {
         print('Error getting environment variable $key: $e');

@@ -72,10 +72,8 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
-  # Note: .env file is used for development but is loaded dynamically in production web builds
-  # Environment variables for web are set in web/config.js instead
   assets:
-    # - .env  # Commented out to avoid build errors with web deployment
+    # - .env
     - assets/data/
 
   # An image asset can refer to one or more resolution-specific "variants", see
