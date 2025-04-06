@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/athlete.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../widgets/profile_header.dart';
 import '../widgets/common_info_section.dart';
 import '../widgets/type_specific_section.dart';
@@ -52,11 +54,17 @@ class ProfilePage extends StatelessWidget {
             ),
         ],
       ),
-      floatingActionButton: isOwnProfile && onEditPressed != null ? FloatingActionButton.extended(
-        onPressed: onEditPressed,
+      floatingActionButton: isOwnProfile ? FloatingActionButton.extended(
+        onPressed: onEditPressed ?? () {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Edit functionality not available')),
+          );
+        },
         icon: const Icon(Icons.edit),
         label: const Text('Edit Profile'),
         tooltip: 'Edit your profile information',
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
       ) : null,
       body: SingleChildScrollView(
         child: Column(
@@ -71,8 +79,11 @@ class ProfilePage extends StatelessWidget {
             // Type-specific information based on athlete status
             TypeSpecificSection(athlete: athlete),
             
-            // Edit profile button if viewing own profile (keeping this too for visibility)
-            if (isOwnProfile && onEditPressed != null) _buildEditButton(context),
+            // Edit profile button if viewing own profile
+            if (isOwnProfile) _buildEditButton(context),
+            
+            // Logout button if viewing own profile
+            if (isOwnProfile) _buildLogoutButton(context),
             
             // Return to home button
             _buildHomeButton(context),
@@ -93,7 +104,11 @@ class ProfilePage extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: ElevatedButton.icon(
-          onPressed: onEditPressed,
+          onPressed: onEditPressed ?? () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Edit functionality not available')),
+            );
+          },
           icon: const Icon(Icons.edit),
           label: const Text('Edit Profile'),
           style: ElevatedButton.styleFrom(
@@ -106,10 +121,77 @@ class ProfilePage extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
+            minimumSize: const Size(200, 50), // Make button wider
+            elevation: 3, // Add some elevation
           ),
         ),
       ),
     );
+  }
+
+  Widget _buildLogoutButton(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        child: ElevatedButton.icon(
+          onPressed: () => _showLogoutConfirmationDialog(context),
+          icon: const Icon(Icons.logout),
+          label: const Text('Logout'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Theme.of(context).colorScheme.errorContainer,
+            foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24, 
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            minimumSize: const Size(200, 50),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutConfirmationDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _performLogout(context);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.errorContainer,
+              foregroundColor: Theme.of(context).colorScheme.onErrorContainer,
+            ),
+            child: const Text('Logout'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _performLogout(BuildContext context) {
+    // Get the AuthBloc and dispatch logout event
+    context.read<AuthBloc>().add(const AuthSignedOut());
+    
+    // Show message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Logging out...')),
+    );
+    
+    // Navigate to login screen
+    context.go('/auth/login');
   }
 
   Widget _buildHomeButton(BuildContext context) {

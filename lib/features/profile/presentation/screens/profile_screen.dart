@@ -28,12 +28,14 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late final ProfileBloc _profileBloc;
+  late final AuthBloc _authBloc;
   bool _isNewUser = false;
   
   @override
   void initState() {
     super.initState();
     _profileBloc = context.read<ProfileBloc>();
+    _authBloc = sl<AuthBloc>();
     
     // Check if the ID looks like a temporary user ID (not an athlete ID yet)
     final bool isTemporaryId = widget.athleteId != null && 
@@ -97,8 +99,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
   
   void _navigateToEditProfile() {
+    // Get the current athlete ID from the profile state
+    String athleteId = widget.athleteId ?? 'unknown';
+    
+    if (_profileBloc.state is ProfileLoaded) {
+      final loadedState = _profileBloc.state as ProfileLoaded;
+      athleteId = loadedState.athlete.id;
+    }
+    
     // Use the GoRouter's pushNamed method with the route name and parameters
-    debugPrint("ProfileScreen: Navigating to edit profile for ID: ${widget.athleteId}");
+    debugPrint("ProfileScreen: Navigating to edit profile for ID: $athleteId");
     
     // Show a brief indicator that we're handling the edit action
     ScaffoldMessenger.of(context).showSnackBar(
@@ -110,132 +120,156 @@ class _ProfileScreenState extends State<ProfileScreen> {
     
     context.pushNamed(
       'editProfile',  
-      pathParameters: {'id': widget.athleteId ?? 'unknown'},
+      pathParameters: {'id': athleteId},
     );
+  }
+
+  // Determine if this is the user's own profile
+  bool _determineIsOwnProfile() {
+    // First check the explicit widget property
+    if (widget.isOwnProfile) {
+      return true;
+    }
+    
+    // If we're in development mode, allow editing
+    if (widget.isDevMode) {
+      return true;
+    }
+    
+    // Check if the current user matches the profile being viewed
+    final authBloc = sl<AuthBloc>();
+    final authState = authBloc.state;
+    
+    if (authState.status == AuthStatus.authenticated && 
+        authState.athlete != null && 
+        widget.athleteId != null) {
+      // Compare the IDs to determine if this is the user's own profile
+      return authState.athlete!.id == widget.athleteId;
+    }
+    
+    return false;
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<ProfileBloc, ProfileState>(
-      listener: (context, state) {
-        print("ProfileScreen: BlocConsumer listener - state: ${state.runtimeType}");
-        if (state is ProfileUpdateSuccess) {
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
-          );
-        } else if (state is ProfileUpdateFailure) {
-          // Show error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to update profile: ${state.message}')),
-          );
-        } else if (state is ProfileImageUploadSuccess) {
-          // Show success message for image upload
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile image uploaded successfully')),
-          );
-        } else if (state is ProfileImageUploadFailure) {
-          // Show error message for image upload
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Failed to upload image: ${state.message}')),
-          );
-        } else if (state is ProfileError) {
-          // Show general error message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${state.message}')),
-          );
-        } else if (state is ProfileLoaded && _isNewUser) {
-          // If this is a new user and we just loaded an empty profile,
-          // automatically navigate to edit mode
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            _navigateToEditProfile();
-          });
-        }
-      },
-      builder: (context, state) {
-        print("ProfileScreen: BlocConsumer builder - state: ${state.runtimeType}");
-        if (state is ProfileLoading) {
-          // Show loading indicator
-          print("ProfileScreen: Rendering loading indicator");
+    // Get the current determination if this is the user's own profile
+    final bool isOwnProfile = _determineIsOwnProfile();
+    
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: _profileBloc),
+        BlocProvider.value(value: _authBloc),
+      ],
+      child: BlocConsumer<ProfileBloc, ProfileState>(
+        listener: (context, state) {
+          debugPrint("ProfileScreen: BlocConsumer listener - state: ${state.runtimeType}");
+          if (state is ProfileUpdateSuccess) {
+            // Show success message
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile updated successfully')),
+            );
+          } else if (state is ProfileUpdateFailure) {
+            // Show error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to update profile: ${state.message}')),
+            );
+          } else if (state is ProfileImageUploadSuccess) {
+            // Show success message for image upload
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Profile image uploaded successfully')),
+            );
+          } else if (state is ProfileImageUploadFailure) {
+            // Show error message for image upload
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Failed to upload image: ${state.message}')),
+            );
+          } else if (state is ProfileError) {
+            // Show general error message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Error: ${state.message}')),
+            );
+          } else if (state is ProfileLoaded && _isNewUser) {
+            // If this is a new user and we just loaded an empty profile,
+            // automatically navigate to edit mode
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _navigateToEditProfile();
+            });
+          }
+        },
+        builder: (context, state) {
+          debugPrint("ProfileScreen: BlocConsumer builder - state: ${state.runtimeType}");
+          if (state is ProfileLoading) {
+            // Show loading indicator
+            debugPrint("ProfileScreen: Rendering loading indicator");
+            return const Scaffold(
+              body: Center(
+                child: CircularProgressIndicator(),
+              ),
+            );
+          } else if (state is ProfileLoaded) {
+            // Show profile page with loaded data
+            debugPrint("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
+            
+            return ProfilePage(
+              athlete: state.athlete,
+              isOwnProfile: isOwnProfile,
+              onEditPressed: () => _navigateToEditProfile(),
+            );
+          } else if (state is ProfileError) {
+            // Show error view
+            debugPrint("ProfileScreen: Rendering error view: ${state.message}");
+            return Scaffold(
+              appBar: AppBar(title: const Text('Profile')),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Failed to load profile: ${state.message}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        if (widget.isDevMode) {
+                          // In dev mode, create and emit mock data again
+                          debugPrint("ProfileScreen: Try Again in dev mode - recreating mock athlete");
+                          final mockAthlete = Athlete(
+                            id: 'mock-id-123',
+                            name: 'Dev Test User',
+                            email: 'dev@example.com',
+                            status: AthleteStatus.current,
+                            major: AthleteMajor.computerScience,
+                            career: AthleteCareer.softwareEngineer,
+                            profileImageUrl: 'https://via.placeholder.com/150',
+                            university: 'Dev University',
+                            sport: 'Basketball',
+                            achievements: ['Created with DevBypass', 'Testing Mode'],
+                            graduationYear: DateTime(2023),
+                          );
+                          _profileBloc.emit(ProfileLoaded(mockAthlete));
+                        } else {
+                          // Retry loading profile
+                          debugPrint("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
+                          _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
+                        }
+                      },
+                      child: const Text('Try Again'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          
+          // Show loading by default
+          debugPrint("ProfileScreen: Rendering default loading view (initial state)");
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
             ),
           );
-        } else if (state is ProfileLoaded) {
-          // Show profile page with loaded data
-          print("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
-          
-          // Determine if this is the user's own profile
-          // Check both the widget property and the session user ID
-          bool isOwnProfile = widget.isOwnProfile;
-          
-          // If we're in development mode, always allow editing
-          if (widget.isDevMode) {
-            isOwnProfile = true;
-          }
-          
-          return ProfilePage(
-            athlete: state.athlete,
-            isOwnProfile: isOwnProfile,
-            onEditPressed: isOwnProfile 
-              ? () => _navigateToEditProfile()
-              : null,
-          );
-        } else if (state is ProfileError) {
-          // Show error view
-          print("ProfileScreen: Rendering error view: ${state.message}");
-          return Scaffold(
-            appBar: AppBar(title: const Text('Profile')),
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text('Failed to load profile: ${state.message}'),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      if (widget.isDevMode) {
-                        // In dev mode, create and emit mock data again
-                        print("ProfileScreen: Try Again in dev mode - recreating mock athlete");
-                        final mockAthlete = Athlete(
-                          id: 'mock-id-123',
-                          name: 'Dev Test User',
-                          email: 'dev@example.com',
-                          status: AthleteStatus.current,
-                          major: AthleteMajor.computerScience,
-                          career: AthleteCareer.softwareEngineer,
-                          profileImageUrl: 'https://via.placeholder.com/150',
-                          university: 'Dev University',
-                          sport: 'Basketball',
-                          achievements: ['Created with DevBypass', 'Testing Mode'],
-                          graduationYear: DateTime(2023),
-                        );
-                        _profileBloc.emit(ProfileLoaded(mockAthlete));
-                      } else {
-                        // Retry loading profile
-                        print("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
-                        _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
-                      }
-                    },
-                    child: const Text('Try Again'),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        
-        // Show loading by default
-        print("ProfileScreen: Rendering default loading view (initial state)");
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
-      },
+        },
+      ),
     );
   }
 } 
