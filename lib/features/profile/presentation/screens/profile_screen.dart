@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../../core/models/athlete.dart';
 import '../../../../core/di/injection.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_page.dart';
 
@@ -27,13 +28,47 @@ class ProfileScreen extends StatefulWidget {
 
 class _ProfileScreenState extends State<ProfileScreen> {
   late final ProfileBloc _profileBloc;
+  bool _isNewUser = false;
   
   @override
   void initState() {
     super.initState();
-    _profileBloc = sl<ProfileBloc>();
+    _profileBloc = context.read<ProfileBloc>();
     
-    if (widget.isDevMode) {
+    // Check if the ID looks like a temporary user ID (not an athlete ID yet)
+    final bool isTemporaryId = widget.athleteId != null && 
+                              (widget.athleteId!.startsWith('user-') || 
+                               widget.athleteId! == 'unknown-user-id' ||
+                               widget.athleteId! == 'new-user');
+    
+    if (isTemporaryId) {
+      _isNewUser = true;
+      // Get the auth user ID from AuthBloc
+      final authBloc = sl<AuthBloc>();
+      final authState = authBloc.state;
+      
+      // Extract the user ID from the athlete object if available, or use the provided ID
+      final String userId = authState.status == AuthStatus.authenticated && 
+                           authState.athlete != null && 
+                           authState.athlete!.id.isNotEmpty
+          ? authState.athlete!.id
+          : widget.athleteId ?? 'unknown-user-id';
+          
+      final String? email = authState.status == AuthStatus.authenticated && 
+                           authState.athlete != null && 
+                           authState.athlete!.email != null && 
+                           authState.athlete!.email!.isNotEmpty
+          ? authState.athlete!.email
+          : null;
+      
+      // Initialize a new profile
+      _profileBloc.add(InitializeNewProfileEvent(
+        authUserId: userId,
+        email: email,
+      ));
+      
+      debugPrint('ProfileScreen: Initializing new profile for user ID: $userId');
+    } else if (widget.isDevMode) {
       // Use mock data for development
       const mockAthlete = Athlete(
         id: 'mock-id-123',
@@ -62,7 +97,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
   
   void _navigateToEditProfile() {
-    context.push(RouteConstants.editProfile);
+    // Use the GoRouter's pushNamed method with the route name and parameters
+    debugPrint("ProfileScreen: Navigating to edit profile for ID: ${widget.athleteId}");
+    
+    // Show a brief indicator that we're handling the edit action
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Opening edit profile...'),
+        duration: Duration(seconds: 1),
+      ),
+    );
+    
+    context.pushNamed(
+      'editProfile',  
+      pathParameters: {'id': widget.athleteId ?? 'unknown'},
+    );
   }
 
   @override
@@ -95,6 +144,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: ${state.message}')),
           );
+        } else if (state is ProfileLoaded && _isNewUser) {
+          // If this is a new user and we just loaded an empty profile,
+          // automatically navigate to edit mode
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _navigateToEditProfile();
+          });
         }
       },
       builder: (context, state) {
@@ -110,10 +165,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
         } else if (state is ProfileLoaded) {
           // Show profile page with loaded data
           print("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
+          
+          // Determine if this is the user's own profile
+          // Check both the widget property and the session user ID
+          bool isOwnProfile = widget.isOwnProfile;
+          
+          // If we're in development mode, always allow editing
+          if (widget.isDevMode) {
+            isOwnProfile = true;
+          }
+          
           return ProfilePage(
             athlete: state.athlete,
-            isOwnProfile: widget.isOwnProfile,
-            onEditPressed: widget.isOwnProfile 
+            isOwnProfile: isOwnProfile,
+            onEditPressed: isOwnProfile 
               ? () => _navigateToEditProfile()
               : null,
           );

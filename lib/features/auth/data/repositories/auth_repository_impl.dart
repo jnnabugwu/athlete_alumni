@@ -22,10 +22,10 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> signUp({
     required String email,
     required String password,
-    required String fullName,
-    required String username,
-    required String college,
-    required AthleteStatus athleteStatus,
+    String? fullName,
+    String? username,
+    String? college,
+    AthleteStatus? athleteStatus,
   }) async {
     await remoteDataSource.signUp(
       email: email,
@@ -50,5 +50,15 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Athlete?> getCurrentAthlete() async {
     return await remoteDataSource.getCurrentAthlete();
+  }
+
+  @override
+  Future<void> sendPasswordResetEmail(String email) async {
+    await remoteDataSource.sendPasswordResetEmail(email);
+  }
+
+  @override
+  Future<void> resetPassword(String password, String token) async {
+    await remoteDataSource.resetPassword(password, token);
   }
 }

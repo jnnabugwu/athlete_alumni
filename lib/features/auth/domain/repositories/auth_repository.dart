@@ -9,10 +9,10 @@ abstract class AuthRepository {
   Future<void> signUp({
     required String email,
     required String password,
-    required String fullName,
-    required String username,
-    required String college,
-    required AthleteStatus athleteStatus,
+    String? fullName,
+    String? username,
+    String? college,
+    AthleteStatus? athleteStatus,
   });
 
   Future<void> signOut();
@@ -20,4 +20,8 @@ abstract class AuthRepository {
   Future<bool> isSignedIn();
   
   Future<Athlete?> getCurrentAthlete();
+  
+  Future<void> sendPasswordResetEmail(String email);
+  
+  Future<void> resetPassword(String password, String token);
 }

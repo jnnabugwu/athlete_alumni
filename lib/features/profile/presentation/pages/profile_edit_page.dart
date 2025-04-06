@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
 import '../../../../core/models/athlete.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileEditPage extends StatefulWidget {
   final Athlete athlete;
@@ -17,17 +18,18 @@ class ProfileEditPage extends StatefulWidget {
 }
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _majorController;
-  late TextEditingController _careerController;
+  late TextEditingController _fullNameController;
+  late TextEditingController _usernameController;
   late TextEditingController _universityController;
   late TextEditingController _sportController;
   late AthleteStatus _athleteStatus;
+  late AthleteMajor _selectedMajor;
+  late AthleteCareer _selectedCareer;
   DateTime? _graduationYear;
   String? _profileImageUrl;
   File? _profileImageFile;
   List<String> _achievements = [];
+  String _email = '';
 
   final _formKey = GlobalKey<FormState>();
   bool _hasChanges = false;
@@ -35,25 +37,44 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   void initState() {
     super.initState();
-    // Initialize controllers with athlete data
-    _nameController = TextEditingController(text: widget.athlete.name);
-    _emailController = TextEditingController(text: widget.athlete.email);
-    _majorController = TextEditingController(text: widget.athlete.major.displayName);
-    _careerController = TextEditingController(text: widget.athlete.career.displayName);
+    _fullNameController = TextEditingController(text: widget.athlete.name ?? '');
+    _usernameController = TextEditingController(text: widget.athlete.username ?? '');
     _universityController = TextEditingController(text: widget.athlete.university ?? '');
     _sportController = TextEditingController(text: widget.athlete.sport ?? '');
     _athleteStatus = widget.athlete.status;
+    _selectedMajor = widget.athlete.major;
+    _selectedCareer = widget.athlete.career;
     _graduationYear = widget.athlete.graduationYear;
     _profileImageUrl = widget.athlete.profileImageUrl;
     _achievements = widget.athlete.achievements?.toList() ?? [];
+    
+    // Initialize email from athlete object or try to get it from Supabase
+    _initializeEmail();
 
-    // Listen for changes to track if the form is dirty
-    _nameController.addListener(_onFormChanged);
-    _emailController.addListener(_onFormChanged);
-    _majorController.addListener(_onFormChanged);
-    _careerController.addListener(_onFormChanged);
+    _fullNameController.addListener(_onFormChanged);
+    _usernameController.addListener(_onFormChanged);
     _universityController.addListener(_onFormChanged);
     _sportController.addListener(_onFormChanged);
+  }
+
+  void _initializeEmail() {
+    // First try to get email from athlete object
+    if (widget.athlete.email != null && widget.athlete.email!.isNotEmpty) {
+      _email = widget.athlete.email!;
+      debugPrint('📧 Email from athlete object: $_email');
+      return;
+    }
+    
+    // If not available, try to get it from Supabase auth
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null && user.email != null && user.email!.isNotEmpty) {
+      setState(() {
+        _email = user.email!;
+        debugPrint('📧 Email from Supabase auth: $_email');
+      });
+    } else {
+      debugPrint('⚠️ Could not find email from athlete object or Supabase auth');
+    }
   }
 
   void _onFormChanged() {
@@ -64,26 +85,20 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   @override
   void dispose() {
-    // Clean up controllers
-    _nameController.dispose();
-    _emailController.dispose();
-    _majorController.dispose();
-    _careerController.dispose();
+    _fullNameController.dispose();
+    _usernameController.dispose();
     _universityController.dispose();
     _sportController.dispose();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
-    // Image picker functionality would go here
-    // For now, we'll just simulate it
     setState(() {
-      _profileImageUrl = null; // Clear existing URL when new image is picked
-      _profileImageFile = null; // A real implementation would set this to the picked image
+      _profileImageUrl = null;
+      _profileImageFile = null;
       _hasChanges = true;
     });
     
-    // Show a snackbar to indicate this is a placeholder
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Image picker placeholder - would integrate with camera/gallery')),
     );
@@ -111,23 +126,35 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   void _selectGraduationYear() async {
-    final initialDate = _graduationYear ?? DateTime.now();
-    final firstDate = DateTime(DateTime.now().year - 50);
-    final lastDate = DateTime(DateTime.now().year + 10);
+    final initialYear = _graduationYear?.year ?? DateTime.now().year;
     
-    final DateTime? picked = await showDatePicker(
+    final int? selectedYear = await showDialog<int>(
       context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      // Only select years, not full dates
-      initialEntryMode: DatePickerEntryMode.input,
-      initialDatePickerMode: DatePickerMode.year,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Select Graduation Year'),
+          content: SizedBox(
+            width: 300,
+            height: 300,
+            child: ListView.builder(
+              itemCount: 20,
+              itemBuilder: (BuildContext context, int index) {
+                final year = DateTime.now().year - 30 + index;
+                return ListTile(
+                  title: Text(year.toString(), textAlign: TextAlign.center),
+                  selected: year == initialYear,
+                  onTap: () => Navigator.of(context).pop(year),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
     
-    if (picked != null && picked != _graduationYear) {
+    if (selectedYear != null) {
       setState(() {
-        _graduationYear = DateTime(picked.year);
+        _graduationYear = DateTime(selectedYear);
         _hasChanges = true;
       });
     }
@@ -135,28 +162,33 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   void _saveChanges() {
     if (_formKey.currentState?.validate() ?? false) {
-      // Create updated athlete
       final updatedAthlete = widget.athlete.copyWith(
-        name: _nameController.text,
-        email: _emailController.text,
+        name: _fullNameController.text,
+        username: _usernameController.text,
+        email: _email,
         status: _athleteStatus,
-        //TODO: major and career should be dropdowns in the UI
-        major: AthleteMajor.fromString(_majorController.text),
-        career: AthleteCareer.fromString(_careerController.text),
+        major: _selectedMajor,
+        career: _selectedCareer,
         university: _universityController.text.isEmpty ? null : _universityController.text,
         sport: _sportController.text.isEmpty ? null : _sportController.text,
         achievements: _achievements.isEmpty ? null : _achievements,
         graduationYear: _graduationYear,
-        // In a real implementation, this would handle the image file upload
-        // and update the URL after upload
         profileImageUrl: _profileImageUrl,
       );
       
-      // Call save callback
+      // Show notification that changes are being saved
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saving changes... You will be redirected to the home page.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      
+      debugPrint("ProfileEditPage: Saving changes for athlete ID: ${updatedAthlete.id}, email: ${updatedAthlete.email}");
       widget.onSave(updatedAthlete);
       
-      // Navigate back
-      Navigator.of(context).pop();
+      // Navigation will be handled by the parent EditProfileScreen
+      // after the save is processed and the bloc emits EditProfileSaveSuccess
     }
   }
 
@@ -194,7 +226,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       appBar: AppBar(
         title: const Text('Edit Profile'),
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back),
+          tooltip: 'Back to Profile',
           onPressed: _showDiscardDialog,
         ),
         actions: [
@@ -211,15 +244,12 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Image Section
               _buildProfileImageSection(),
               const SizedBox(height: 24),
               
-              // Common Fields Section
               _buildCommonFieldsSection(),
               const SizedBox(height: 24),
               
-              // Type Selection & Specific Fields
               _buildAthleteTypeSection(),
               const SizedBox(height: 16),
               _athleteStatus == AthleteStatus.current
@@ -227,11 +257,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   : _buildFormerAthleteSection(),
               const SizedBox(height: 24),
               
-              // Achievements Section
               _buildAchievementsSection(),
               const SizedBox(height: 36),
               
-              // Save/Cancel Buttons
               _buildBottomButtons(),
               const SizedBox(height: 24),
             ],
@@ -297,41 +325,54 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Basic Information',
+          'Personal Information',
           style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _nameController,
+          controller: _fullNameController,
           decoration: const InputDecoration(
             labelText: 'Full Name',
             border: OutlineInputBorder(),
           ),
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your name';
+              return 'Please enter your full name';
             }
             return null;
           },
         ),
         const SizedBox(height: 16),
         TextFormField(
-          controller: _emailController,
+          controller: _usernameController,
           decoration: const InputDecoration(
-            labelText: 'Email',
+            labelText: 'Username',
             border: OutlineInputBorder(),
           ),
-          keyboardType: TextInputType.emailAddress,
           validator: (value) {
             if (value == null || value.isEmpty) {
-              return 'Please enter your email';
-            }
-            // Basic email validation
-            if (!value.contains('@') || !value.contains('.')) {
-              return 'Please enter a valid email';
+              return 'Please enter a username';
             }
             return null;
           },
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          initialValue: _email,
+          readOnly: true,
+          enabled: false,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            border: OutlineInputBorder(),
+            fillColor: Color(0xFFF5F5F5),
+            filled: true,
+          ),
+        ),
+        const SizedBox(height: 24),
+        
+        Text(
+          'University Information',
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         const SizedBox(height: 16),
         TextFormField(
@@ -397,15 +438,29 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _majorController,
+        DropdownButtonFormField<AthleteMajor>(
+          value: _selectedMajor,
           decoration: const InputDecoration(
             labelText: 'Major',
             border: OutlineInputBorder(),
           ),
+          items: AthleteMajor.values
+              .map((major) => DropdownMenuItem(
+                    value: major,
+                    child: Text(major.displayName),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              if (value != null) {
+                _selectedMajor = value;
+                _hasChanges = true;
+              }
+            });
+          },
           validator: (value) {
-            if (_athleteStatus == AthleteStatus.current && (value == null || value.isEmpty)) {
-              return 'Please enter your major';
+            if (_athleteStatus == AthleteStatus.current && value == null) {
+              return 'Please select your major';
             }
             return null;
           },
@@ -442,15 +497,29 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           style: Theme.of(context).textTheme.titleMedium,
         ),
         const SizedBox(height: 16),
-        TextFormField(
-          controller: _careerController,
+        DropdownButtonFormField<AthleteCareer>(
+          value: _selectedCareer,
           decoration: const InputDecoration(
             labelText: 'Career',
             border: OutlineInputBorder(),
           ),
+          items: AthleteCareer.values
+              .map((career) => DropdownMenuItem(
+                    value: career,
+                    child: Text(career.displayName),
+                  ))
+              .toList(),
+          onChanged: (value) {
+            setState(() {
+              if (value != null) {
+                _selectedCareer = value;
+                _hasChanges = true;
+              }
+            });
+          },
           validator: (value) {
-            if (_athleteStatus == AthleteStatus.former && (value == null || value.isEmpty)) {
-              return 'Please enter your career';
+            if (_athleteStatus == AthleteStatus.former && value == null) {
+              return 'Please select your career';
             }
             return null;
           },
@@ -536,25 +605,45 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   Widget _buildBottomButtons() {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: _showDiscardDialog,
-            style: OutlinedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: _showDiscardDialog,
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('CANCEL'),
+              ),
             ),
-            child: const Text('CANCEL'),
-          ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: ElevatedButton(
+                onPressed: _hasChanges ? _saveChanges : null,
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('SAVE'),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: _hasChanges ? _saveChanges : null,
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-            ),
-            child: const Text('SAVE'),
+        const SizedBox(height: 16),
+        OutlinedButton.icon(
+          icon: const Icon(Icons.person),
+          label: const Text('Back to Profile'),
+          onPressed: () {
+            if (_hasChanges) {
+              _showDiscardDialog();
+            } else {
+              Navigator.of(context).pop();
+            }
+          },
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            minimumSize: const Size(double.infinity, 0), // Full width
           ),
         ),
       ],

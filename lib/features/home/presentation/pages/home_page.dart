@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../shared/widgets/custom_app_bar.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({Key? key}) : super(key: key);
@@ -29,58 +31,95 @@ class HomePage extends StatelessWidget {
   }
 
   Widget _buildHeroSection(BuildContext context) {
-    return Container(
-      height: 500,
-      width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            AppColors.primary,
-            AppColors.primary.withOpacity(0.8),
-          ],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'Connect with Athletes',
-              style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-              ),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final bool isAuthenticated = state.status == AuthStatus.authenticated;
+        
+        return Container(
+          height: 500,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.primary,
+                AppColors.primary.withOpacity(0.8),
+              ],
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'Find and connect with athletes from your alma mater',
-              style: TextStyle(
-                fontSize: 20,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(height: 32),
-                ElevatedButton(
-              onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                foregroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 16,
-                ),
-              ),
-              child: const Text(
-                'Get Started',
-                style: TextStyle(fontSize: 18),
-              ),
-            ),
-                    ],
+          ),
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Connect with Athletes',
+                  style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Find and connect with athletes from your alma mater',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () async {
+                    // Show a snackbar to indicate navigation attempt
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Navigating to your profile...'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    
+                    // Get the current auth state
+                    final authState = context.read<AuthBloc>().state;
+                    
+                    // Check for athlete ID first, fall back to generating a unique ID if needed
+                    final String profileId = authState.athlete?.id.isNotEmpty == true 
+                        ? authState.athlete!.id
+                        : 'user-${DateTime.now().millisecondsSinceEpoch}';
+                    
+                    debugPrint("HomePage button: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
+                    
+                    // Always navigate directly to the user's profile with their ID
+                    // The profile screen will handle whether this is a new user or not
+                    context.go('/profile/$profileId');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 16,
+                    ),
+                  ),
+                  child: state.status == AuthStatus.loading || state.status == AuthStatus.initial
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        )
+                      : Text(
+                          state.status == AuthStatus.authenticated ? 'Go to Profile' : 'Get Started',
+                          style: const TextStyle(fontSize: 18),
+                        ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 

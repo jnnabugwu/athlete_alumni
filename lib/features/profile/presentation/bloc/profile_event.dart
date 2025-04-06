@@ -49,3 +49,32 @@ class MockProfileLoadedEvent extends ProfileEvent {
   @override
   List<Object> get props => [athlete];
 }
+
+/// Event to initialize a new profile for first-time users
+class InitializeNewProfileEvent extends ProfileEvent {
+  final String authUserId;
+  final String? email;
+  final String? fullName;
+  final String? username;
+  final String? college;
+  final AthleteStatus? athleteStatus;
+  
+  const InitializeNewProfileEvent({
+    required this.authUserId,
+    this.email,
+    this.fullName,
+    this.username,
+    this.college,
+    this.athleteStatus,
+  });
+
+  @override
+  List<Object> get props => [
+    authUserId,
+    if (email != null) email!,
+    if (fullName != null) fullName!,
+    if (username != null) username!,
+    if (college != null) college!,
+    if (athleteStatus != null) athleteStatus!,
+  ];
+}

@@ -22,6 +22,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthErrorOccurred>(_onAuthErrorOccurred);
     on<AuthSignUpRequested>(_onAuthSignUpRequested);
     on<AuthSignInRequested>(_onAuthSignInRequested);
+    on<UpdateAthleteProfile>(_onUpdateAthleteProfile);
+    on<AuthPasswordResetRequested>(_onAuthPasswordResetRequested);
+    on<AuthNewPasswordSubmitted>(_onAuthNewPasswordSubmitted);
 
     // Initialize auth state listener
     _authSubscription = WebStorage.onAuthStateChange.listen((_) {
@@ -37,35 +40,24 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      debugPrint("AuthBloc: Skip loading persisted state to avoid errors");
-      // Comment out state loading to prevent loading old error states
-      /*
-      final savedState = await WebStorage.getAuthState();
-      final savedAthlete = await WebStorage.getAthleteData();
-
-      if (savedState != null) {
-        final stateMap = json.decode(savedState) as Map<String, dynamic>;
-        final status = AuthStatus.values.firstWhere(
-          (e) => e.toString() == stateMap['status'],
-        );
-
-        Athlete? athlete;
-        if (savedAthlete != null) {
-          athlete = Athlete.fromJson(json.decode(savedAthlete));
-        }
-
-        emit(AuthState(
-          status: status,
-          athlete: athlete,
-          errorMessage: stateMap['errorMessage'],
-        ));
-      }
-      */
+      debugPrint("AuthBloc: Loading persisted state");
+      final isSignedIn = await _authRepository.isSignedIn();
       
-      // Just emit the initial unauthenticated state
-      emit(const AuthState(status: AuthStatus.unauthenticated));
+      if (isSignedIn) {
+        debugPrint("AuthBloc: User is signed in, getting athlete data");
+        final athlete = await _authRepository.getCurrentAthlete();
+        emit(AuthState(
+          status: AuthStatus.authenticated,
+          athlete: athlete,
+        ));
+        debugPrint("AuthBloc: Emitted authenticated state with athlete");
+      } else {
+        debugPrint("AuthBloc: User is not signed in");
+        emit(const AuthState(status: AuthStatus.unauthenticated));
+      }
     } catch (e) {
-      add(AuthErrorOccurred('Failed to load persisted state: ${e.toString()}'));
+      debugPrint("AuthBloc: Error loading persisted state: $e");
+      emit(const AuthState(status: AuthStatus.unauthenticated));
     }
   }
 
@@ -109,22 +101,30 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
+      debugPrint("AuthBloc: Checking auth status");
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
+        debugPrint("AuthBloc: User is signed in, getting athlete data");
         final athlete = await _authRepository.getCurrentAthlete();
-        final newState = state.copyWith(
+        
+        // Allow authentication even if athlete data is null
+        emit(AuthState(
           status: AuthStatus.authenticated,
           athlete: athlete,
-        );
-        emit(newState);
-        await _persistState(newState);
+        ));
+        
+        if (athlete != null) {
+          debugPrint("AuthBloc: Authenticated with athlete data, ID: ${athlete.id}");
+        } else {
+          debugPrint("AuthBloc: Authenticated but athlete data is null (this is ok for new users)");
+        }
       } else {
-        final newState = state.copyWith(status: AuthStatus.unauthenticated);
-        emit(newState);
-        await _persistState(newState);
+        debugPrint("AuthBloc: User is not signed in");
+        emit(const AuthState(status: AuthStatus.unauthenticated));
       }
     } catch (e) {
+      debugPrint("AuthBloc: Error checking auth status: $e");
       add(AuthErrorOccurred(e.toString()));
     }
   }
@@ -251,6 +251,79 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // After successful login, check auth state to get the athlete data
       add(const AuthCheckRequested());
     } catch (e) {
+      add(AuthErrorOccurred(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateAthleteProfile(
+    UpdateAthleteProfile event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('AuthBloc: Updating athlete profile in auth state: ${event.athlete.id}');
+      
+      // Emit new state with updated athlete
+      final newState = state.copyWith(
+        athlete: event.athlete,
+      );
+      
+      emit(newState);
+      await _persistState(newState);
+      
+      debugPrint('AuthBloc: Athlete profile updated in auth state');
+    } catch (e) {
+      debugPrint('AuthBloc: Error updating athlete profile: $e');
+      add(AuthErrorOccurred('Failed to update athlete profile: ${e.toString()}'));
+    }
+  }
+
+  Future<void> _onAuthPasswordResetRequested(
+    AuthPasswordResetRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('🔑 AuthBloc: Processing password reset request for ${event.email}');
+      emit(state.copyWith(status: AuthStatus.loading));
+      
+      await _authRepository.sendPasswordResetEmail(event.email);
+      
+      debugPrint('✅ AuthBloc: Password reset email sent to ${event.email}');
+      
+      emit(state.copyWith(
+        status: AuthStatus.passwordResetEmailSent,
+        errorMessage: null,
+      ));
+    } catch (e) {
+      debugPrint('❌ AuthBloc: Error sending password reset email: $e');
+      add(AuthErrorOccurred(e.toString()));
+    }
+  }
+
+  Future<void> _onAuthNewPasswordSubmitted(
+    AuthNewPasswordSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('🔑 AuthBloc: Processing new password submission');
+      emit(state.copyWith(status: AuthStatus.loading));
+      
+      await _authRepository.resetPassword(event.password, event.token);
+      
+      debugPrint('✅ AuthBloc: Password reset successfully');
+      
+      emit(state.copyWith(
+        status: AuthStatus.passwordResetSuccess,
+        errorMessage: null,
+      ));
+      
+      // After successfully resetting password, transition to unauthenticated
+      // so user can login with new password
+      emit(state.copyWith(
+        status: AuthStatus.unauthenticated,
+        errorMessage: null,
+      ));
+    } catch (e) {
+      debugPrint('❌ AuthBloc: Error resetting password: $e');
       add(AuthErrorOccurred(e.toString()));
     }
   }

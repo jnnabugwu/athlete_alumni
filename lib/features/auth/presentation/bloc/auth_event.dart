@@ -22,7 +22,7 @@ class AuthSignedOut extends AuthEvent {
 class AuthSessionUpdated extends AuthEvent {
   final Athlete? athlete;
 
-  const AuthSessionUpdated(this.athlete);
+  const AuthSessionUpdated({this.athlete});
 
   @override
   List<Object?> get props => [athlete];
@@ -40,18 +40,18 @@ class AuthErrorOccurred extends AuthEvent {
 class AuthSignUpRequested extends AuthEvent {
   final String email;
   final String password;
-  final String fullName;
-  final String username;
-  final String college;
-  final AthleteStatus athleteStatus;
+  final String? fullName;
+  final String? username;
+  final String? college;
+  final AthleteStatus? athleteStatus;
 
   const AuthSignUpRequested({
     required this.email,
     required this.password,
-    required this.fullName,
-    required this.username,
-    required this.college,
-    required this.athleteStatus,
+    this.fullName,
+    this.username,
+    this.college,
+    this.athleteStatus,
   });
 
   @override
@@ -69,4 +69,37 @@ class AuthSignInRequested extends AuthEvent {
 
   @override
   List<Object?> get props => [email, password];
+}
+
+class AuthPasswordResetRequested extends AuthEvent {
+  final String email;
+
+  const AuthPasswordResetRequested({
+    required this.email,
+  });
+
+  @override
+  List<Object?> get props => [email];
+}
+
+class AuthNewPasswordSubmitted extends AuthEvent {
+  final String password;
+  final String token;
+
+  const AuthNewPasswordSubmitted({
+    required this.password,
+    required this.token,
+  });
+
+  @override
+  List<Object?> get props => [password, token];
+}
+
+class UpdateAthleteProfile extends AuthEvent {
+  final Athlete athlete;
+
+  const UpdateAthleteProfile(this.athlete);
+
+  @override
+  List<Object?> get props => [athlete];
 }

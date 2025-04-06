@@ -39,16 +39,15 @@ dependencies:
   flutter_bloc: ^8.1.4
   equatable: ^2.0.5
   dartz: ^0.10.1
-  get_it: ^7.6.7
-  injectable: ^2.5.0
-  supabase_flutter: ^2.3.4
-  go_router: ^13.2.0
-  cached_network_image: ^3.4.1
-  flutter_dotenv: ^5.2.1
-  http: ^1.3.0
-  flutter_secure_storage: ^9.0.0
-  bloc: ^8.1.4
-  shared_preferences: ^2.5.2
+  get_it: ^7.6.0
+  supabase_flutter: ^2.0.0
+  go_router: ^12.1.1
+  cached_network_image: ^3.3.0
+  flutter_dotenv: ^5.1.0
+  http: ^1.1.0
+  flutter_secure_storage: ^8.0.0
+  bloc: ^8.1.2
+  # shared_preferences: ^2.5.2
 
 dev_dependencies:
   flutter_test:
@@ -60,8 +59,6 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
-  build_runner: ^2.4.15
-  injectable_generator: ^2.7.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -75,8 +72,10 @@ flutter:
   uses-material-design: true
 
   # To add assets to your application, add an assets section, like this:
+  # Note: .env file is used for development but is loaded dynamically in production web builds
+  # Environment variables for web are set in web/config.js instead
   assets:
-    - .env
+    # - .env  # Commented out to avoid build errors with web deployment
     - assets/data/
 
   # An image asset can refer to one or more resolution-specific "variants", see

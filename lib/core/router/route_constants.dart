@@ -4,6 +4,7 @@ class RouteConstants {
   static const String login = '/login';
   static const String register = '/register';
   static const String passwordReset = '/password-reset';
+  static const String passwordResetForm = '/password-reset/:token';
   static const String profile = '/profile';
   static const String profileWithId = '/profile/:id';
   static const String myProfile = '/my-profile';

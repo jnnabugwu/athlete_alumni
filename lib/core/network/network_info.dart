@@ -1,5 +1,5 @@
 import 'package:http/http.dart' as http;
-import 'package:injectable/injectable.dart';
+// import 'package:injectable/injectable.dart';  // Not needed
 
 /// Abstract class defining network connectivity checking functionality
 abstract class NetworkInfo {
@@ -8,7 +8,7 @@ abstract class NetworkInfo {
 }
 
 /// Implementation of NetworkInfo that actually performs connectivity checks
-@Injectable(as: NetworkInfo)
+// @Injectable(as: NetworkInfo)  // Removed since not using code generation
 class NetworkInfoImpl implements NetworkInfo {
   NetworkInfoImpl();
 
@@ -30,8 +30,8 @@ class NetworkInfoImpl implements NetworkInfo {
 }
 
 /// A more robust implementation that attempts multiple reliable endpoints
-@Named('robustNetworkInfo')
-@Injectable(as: NetworkInfo)
+// @Named('robustNetworkInfo')  // Removed since not using code generation
+// @Injectable(as: NetworkInfo)  // Removed since not using code generation
 class RobustNetworkInfoImpl implements NetworkInfo {
   RobustNetworkInfoImpl();
 
@@ -63,8 +63,8 @@ class RobustNetworkInfoImpl implements NetworkInfo {
 }
 
 /// Web-specific implementation that always returns true for simplicity
-@Named('webNetworkInfo')
-@Injectable(as: NetworkInfo)
+// @Named('webNetworkInfo')  // Removed since not using code generation
+// @Injectable(as: NetworkInfo)  // Removed since not using code generation
 class WebNetworkInfoImpl implements NetworkInfo {
   @override
   Future<bool> get isConnected async {

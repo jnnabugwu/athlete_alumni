@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/models/athlete.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../../../core/router/route_constants.dart';
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_edit_page.dart';
@@ -22,13 +26,21 @@ class EditProfileScreen extends StatelessWidget {
           // Update the profile bloc with new data
           context.read<ProfileBloc>().add(UpdateProfileEvent(state.athlete));
           
+          // Also update the auth bloc with the new athlete profile
+          final authBloc = sl<AuthBloc>();
+          authBloc.add(UpdateAthleteProfile(state.athlete));
+          
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Profile updated successfully')),
+            const SnackBar(
+              content: Text('Profile updated successfully. Changes may take a moment to appear.'),
+              duration: Duration(seconds: 3),
+            ),
           );
           
-          // Navigate back
-          Navigator.of(context).pop();
+          // Navigate to the home page instead of the profile page
+          debugPrint('EditProfileScreen: Navigating to home page after profile update');
+          context.go(RouteConstants.home);
         } else if (state is EditProfileSaveFailure) {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(

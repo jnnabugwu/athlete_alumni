@@ -24,19 +24,21 @@ class ProfileHeader extends StatelessWidget {
             tag: 'profile-${athlete.id}',
             child: CircleAvatar(
               radius: 60,
-              backgroundImage: athlete.profileImageUrl != null
+              backgroundImage: athlete.profileImageUrl != null && athlete.profileImageUrl!.isNotEmpty
                   ? NetworkImage(athlete.profileImageUrl!)
                   : null,
               backgroundColor: Colors.grey.shade200,
-              child: athlete.profileImageUrl == null
+              onBackgroundImageError: athlete.profileImageUrl != null && athlete.profileImageUrl!.isNotEmpty
+                  ? (exception, stackTrace) {
+                      debugPrint("Error loading profile image: $exception");
+                    }
+                  : null,
+              child: athlete.profileImageUrl == null || athlete.profileImageUrl!.isEmpty
                   ? Text(
                       athlete.name.isNotEmpty ? athlete.name[0] : '?',
                       style: const TextStyle(fontSize: 40),
                     )
                   : null,
-              onBackgroundImageError: (exception, stackTrace) {
-                // Fallback for image loading errors
-              },
             ),
           ),
           const SizedBox(height: 16),
