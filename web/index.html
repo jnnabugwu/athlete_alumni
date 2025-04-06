@@ -18,98 +18,166 @@
 
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
-  <meta name="description" content="A new Flutter project.">
+  <meta name="description" content="A web app for Athlete Alumni.">
 
   <!-- iOS meta tags & icons -->
-  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black">
-  <meta name="apple-mobile-web-app-title" content="athlete_alumni">
+  <meta name="apple-mobile-web-app-title" content="Athlete Alumni">
   <link rel="apple-touch-icon" href="icons/Icon-192.png">
 
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="favicon.png"/>
 
-  <title>athlete_alumni</title>
+  <title>Athlete Alumni</title>
   <link rel="manifest" href="manifest.json">
 
-  <!-- Load environment configuration -->
-  <script src="config.js"></script>
-  
+  <!-- Environment configuration -->
+  <script>
+    // Inline environment configuration
+    window.ENV = {
+      SUPABASE_URL: 'https://kszcjniwbqxyndpsajhr.supabase.co/',
+      SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtzemNqbml3YnF4eW5kcHNhamhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDM2NTEzNjQsImV4cCI6MjA1OTIyNzM2NH0.UnN4xuo783XDrR5nQTlwZAIcW6DqrbFY3bo4nssOvu4'
+    };
+  </script>
+
+  <script>
+    // The value below is injected by flutter build, do not touch.
+    var serviceWorkerVersion = null;
+  </script>
+  <!-- This script adds the flutter initialization JS code -->
+  <script src="flutter.js" defer></script>
   <style>
-    .loading {
+    body {
+      background-color: #0c2340;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
       display: flex;
       justify-content: center;
       align-items: center;
       height: 100vh;
-      margin: 0;
-      padding: 0;
-      background-color: #f5f5f5;
-      font-family: 'Roboto', sans-serif;
+      width: 100vw;
+      overflow: hidden;
     }
     .loading-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
     }
     .loading-spinner {
       width: 50px;
       height: 50px;
-      border: 5px solid rgba(0, 0, 0, 0.1);
+      border: 5px solid rgba(255, 255, 255, 0.3);
       border-radius: 50%;
-      border-top-color: #3498db;
+      border-top-color: #e6c200;
       animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
-    }
-    .loading-text {
-      color: #333;
-      font-size: 16px;
-    }
-    .error-container {
-      display: none;
-      color: #e74c3c;
-      margin-top: 20px;
-      padding: 10px;
-      border: 1px solid #e74c3c;
-      border-radius: 4px;
+      margin-bottom: 20px;
     }
     @keyframes spin {
       to {
         transform: rotate(360deg);
       }
     }
+    .loading-text {
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .loading-subtext {
+      color: #e6c200;
+      font-size: 14px;
+    }
+    .error-container {
+      display: none;
+      color: white;
+      background-color: rgba(220, 53, 69, 0.8);
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 80%;
+    }
+    .error-title {
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .error-message {
+      font-size: 14px;
+      margin-bottom: 15px;
+    }
+    .error-button {
+      background-color: white;
+      color: #dc3545;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .error-button:hover {
+      background-color: #f8f9fa;
+    }
   </style>
 </head>
-<body class="loading">
-  <div class="loading-container">
+<body>
+  <div id="loading" class="loading-container">
     <div class="loading-spinner"></div>
-    <div class="loading-text">Loading Athlete Alumni...</div>
-    <div id="error-container" class="error-container"></div>
+    <div class="loading-text">Loading Athlete Alumni</div>
+    <div class="loading-subtext">Please wait...</div>
   </div>
-
+  <div id="error" class="error-container">
+    <div class="error-title">Something went wrong</div>
+    <div id="error-message" class="error-message">Failed to load the application</div>
+    <button class="error-button" onclick="window.location.reload()">Try Again</button>
+  </div>
   <script>
-    // Error handling for Flutter loading
-    window.addEventListener('error', function(event) {
-      console.error('Error loading application:', event.error || event.message);
-      document.getElementById('error-container').style.display = 'block';
-      document.getElementById('error-container').textContent = 
-        'Error loading application. Please try refreshing the page or contact support if the issue persists.';
-    });
+    let timeoutId;
     
-    // Timeout to detect if Flutter doesn't load in a reasonable time
-    setTimeout(function() {
-      if (!window.flutterCanvasKit && document.body.classList.contains('loading')) {
-        console.warn('Flutter app did not load in the expected time frame');
-        document.getElementById('error-container').style.display = 'block';
-        document.getElementById('error-container').textContent = 
-          'The application is taking longer than expected to load. Please check your internet connection and try refreshing the page.';
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('error').style.display = 'block';
+      document.getElementById('error-message').textContent = message || 'Failed to load the application';
+    }
+    
+    window.addEventListener('load', function(ev) {
+      // Clear loading timeout when Flutter is initialized
+      function clearLoadingTimeout() {
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
       }
-    }, 30000); // 30 seconds timeout
-  </script>
-
-  <script src="flutter_bootstrap.js" async></script>
-  
-  <script>
-    // Remove loading class once Flutter initialization begins
-    window.addEventListener('flutter-first-frame', function() {
-      document.body.classList.remove('loading');
+      
+      // Show error if Flutter doesn't initialize within 30 seconds
+      timeoutId = setTimeout(function() {
+        console.error('Flutter app did not load in the expected time frame');
+        showError('Application took too long to load. Please check your connection and try again.');
+      }, 30000);
+      
+      // Download main.dart.js
+      _flutter.loader.loadEntrypoint({
+        serviceWorker: {
+          serviceWorkerVersion: serviceWorkerVersion,
+        },
+        onEntrypointLoaded: function(engineInitializer) {
+          engineInitializer.initializeEngine().then(function(appRunner) {
+            clearLoadingTimeout();
+            appRunner.runApp();
+          }).catch(function(error) {
+            clearLoadingTimeout();
+            console.error('Error initializing Flutter engine: ', error);
+            showError('Error initializing application: ' + error.message);
+          });
+        }
+      }).catch(function(error) {
+        clearLoadingTimeout();
+        console.error('Error loading application: ', error);
+        showError('Error loading application: ' + error.message);
+      });
     });
   </script>
 </body>
