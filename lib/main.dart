@@ -3,25 +3,24 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:athlete_alumni/core/di/injection.dart' as di;
 import 'package:athlete_alumni/core/router/app_router.dart';
-import 'package:athlete_alumni/utils/environment.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Load environment variables
+  // Load .env file first
   try {
-    // Initialize environment variables with fallbacks
-    await Environment.initialize();
-    print('✅ Environment initialized successfully');
+    await dotenv.load(fileName: ".env");
+    print('✅ Loaded .env file successfully');
     
     // Get and log Supabase configuration (without the actual key)
-    final supabaseUrl = Environment.supabaseUrl;
+    final supabaseUrl = dotenv.get('SUPABASE_URL');
     print('🔍 Supabase URL configured as: $supabaseUrl');
     
     // Initialize Supabase
     await Supabase.initialize(
       url: supabaseUrl,
-      anonKey: Environment.supabaseAnonKey,
+      anonKey: dotenv.get('SUPABASE_ANON_KEY'),
     );
     print('✅ Supabase initialized successfully');
 

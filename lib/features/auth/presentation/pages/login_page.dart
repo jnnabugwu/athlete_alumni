@@ -313,6 +313,7 @@ class _LoginPageState extends State<LoginPage> {
                 const SizedBox(height: 12),
                 Divider(color: Colors.grey[300]),
                 const SizedBox(height: 12),
+                /*
                 // Dev login button
                 OutlinedButton(
                   onPressed: () {
@@ -339,6 +340,7 @@ class _LoginPageState extends State<LoginPage> {
                     ],
                   ),
                 ),
+                */
                 const SizedBox(height: 12),
                 // Links section
                 Row(
