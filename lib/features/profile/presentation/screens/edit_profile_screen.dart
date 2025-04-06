@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import '../../../../core/models/athlete.dart';
+import '../../../../core/di/injection.dart';
+import '../../../../features/auth/presentation/bloc/auth_bloc.dart';
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_edit_page.dart';
@@ -22,13 +25,18 @@ class EditProfileScreen extends StatelessWidget {
           // Update the profile bloc with new data
           context.read<ProfileBloc>().add(UpdateProfileEvent(state.athlete));
           
+          // Also update the auth bloc with the new athlete profile
+          final authBloc = sl<AuthBloc>();
+          authBloc.add(UpdateAthleteProfile(state.athlete));
+          
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Profile updated successfully')),
           );
           
-          // Navigate back
-          Navigator.of(context).pop();
+          // Explicitly navigate to the profile page instead of just popping
+          debugPrint('EditProfileScreen: Navigating to profile page with ID: ${state.athlete.id}');
+          context.go('/profile/${state.athlete.id}');
         } else if (state is EditProfileSaveFailure) {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(

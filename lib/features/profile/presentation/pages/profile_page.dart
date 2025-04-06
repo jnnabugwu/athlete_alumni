@@ -29,11 +29,26 @@ class ProfilePage extends StatelessWidget {
       appBar: AppBar(
         title: Text(isOwnProfile ? 'My Profile' : 'Athlete Profile'),
         systemOverlayStyle: SystemUiOverlayStyle.light,
+        leading: IconButton(
+          icon: const Icon(Icons.home),
+          tooltip: 'Go to Home',
+          onPressed: () => context.go('/'),
+        ),
         actions: [
           if (isOwnProfile && onEditPressed != null)
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: onEditPressed,
+            Padding(
+              padding: const EdgeInsets.only(right: 8.0),
+              child: ElevatedButton.icon(
+                icon: const Icon(Icons.edit, size: 20),
+                label: const Text('Edit'),
+                onPressed: onEditPressed,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+              ),
             ),
         ],
       ),
@@ -52,6 +67,9 @@ class ProfilePage extends StatelessWidget {
             
             // Edit profile button if viewing own profile
             if (isOwnProfile) _buildEditButton(context),
+            
+            // Return to home button
+            _buildHomeButton(context),
             
             // Extra padding at the bottom for better scroll experience
             const SizedBox(height: 24),
@@ -80,6 +98,29 @@ class ProfilePage extends StatelessWidget {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(8),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHomeButton(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+        child: OutlinedButton.icon(
+          onPressed: () => context.go('/'),
+          icon: const Icon(Icons.home),
+          label: const Text('Return to Home'),
+          style: OutlinedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 24, 
+              vertical: 12,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+            side: BorderSide(color: Theme.of(context).colorScheme.primary),
           ),
         ),
       ),

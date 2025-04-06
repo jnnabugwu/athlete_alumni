@@ -1,3 +1,4 @@
+import 'dart:convert';
 part 'athlete_enums.dart';
 
 class Athlete {
@@ -58,30 +59,112 @@ class Athlete {
 
   // From JSON factory
   factory Athlete.fromJson(Map<String, dynamic> json) {
+    // Helper to get value from JSON with fallback between camelCase and snake_case
+    T? getValue<T>(String camelCase, String snakeCase) {
+      if (json[camelCase] != null) return json[camelCase] as T?;
+      if (json[snakeCase] != null) return json[snakeCase] as T?;
+      return null;
+    }
+
     return Athlete(
       id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      status: AthleteStatus.values.firstWhere(
-        (e) => e.name == json['status'],
-        orElse: () => AthleteStatus.current,
-      ),
-      // Convert string to AthleteMajor enum, defaulting to "other" if not recognized
-      major: json['major'] != null 
-        ? AthleteMajor.fromString(json['major'] as String) 
-        : AthleteMajor.other,
-      // Convert string to AthleteCareer enum, defaulting to "other" if not recognized
-      career: json['career'] != null 
-        ? AthleteCareer.fromString(json['career'] as String) 
-        : AthleteCareer.other,
-      profileImageUrl: json['profileImageUrl'] as String?,
-      university: json['university'] as String?,
-      sport: json['sport'] as String?,
-      achievements: (json['achievements'] as List<dynamic>?)?.cast<String>(),
-      graduationYear: json['graduationYear'] != null 
-        ? DateTime.parse(json['graduationYear'] as String)
-        : null,
+      name: getValue<String>('name', 'full_name') ?? '',
+      email: getValue<String>('email', 'email') ?? '',
+      status: _parseStatus(json),
+      major: _parseMajor(json),
+      career: _parseCareer(json),
+      profileImageUrl: getValue<String>('profileImageUrl', 'profile_image_url'),
+      university: getValue<String>('university', 'college'),
+      sport: getValue<String>('sport', 'sport'),
+      achievements: _parseAchievements(json),
+      graduationYear: _parseGraduationYear(json),
     );
+  }
+
+  // Helper method to parse status from different formats
+  static AthleteStatus _parseStatus(Map<String, dynamic> json) {
+    // Try various possible field names
+    final statusValue = json['status'] ?? json['athlete_status'];
+    
+    if (statusValue == null) return AthleteStatus.current;
+    
+    if (statusValue is String) {
+      return AthleteStatus.values.firstWhere(
+        (e) => e.name == statusValue || e.displayName == statusValue,
+        orElse: () => AthleteStatus.current,
+      );
+    }
+    
+    return AthleteStatus.current;
+  }
+  
+  // Helper method to parse major from different formats
+  static AthleteMajor _parseMajor(Map<String, dynamic> json) {
+    final majorValue = json['major'];
+    
+    if (majorValue == null) return AthleteMajor.other;
+    
+    if (majorValue is String) {
+      return AthleteMajor.fromString(majorValue);
+    }
+    
+    return AthleteMajor.other;
+  }
+  
+  // Helper method to parse career from different formats
+  static AthleteCareer _parseCareer(Map<String, dynamic> json) {
+    final careerValue = json['career'];
+    
+    if (careerValue == null) return AthleteCareer.other;
+    
+    if (careerValue is String) {
+      return AthleteCareer.fromString(careerValue);
+    }
+    
+    return AthleteCareer.other;
+  }
+  
+  // Helper method to parse achievements from different formats
+  static List<String>? _parseAchievements(Map<String, dynamic> json) {
+    final achievements = json['achievements'];
+    
+    if (achievements == null) return null;
+    
+    if (achievements is List) {
+      return achievements.map((item) => item.toString()).toList();
+    }
+    
+    if (achievements is String) {
+      try {
+        final decoded = jsonDecode(achievements);
+        if (decoded is List) {
+          return decoded.map((item) => item.toString()).toList();
+        }
+      } catch (_) {
+        // If parsing fails, return null
+      }
+    }
+    
+    return null;
+  }
+  
+  // Helper method to parse graduation year from different formats
+  static DateTime? _parseGraduationYear(Map<String, dynamic> json) {
+    final year = json['graduationYear'] ?? json['graduation_year'];
+    
+    if (year == null) return null;
+    
+    if (year is String) {
+      try {
+        return DateTime.parse(year);
+      } catch (_) {
+        // If parsing fails, return null
+      }
+    }
+    
+    if (year is DateTime) return year;
+    
+    return null;
   }
 
   // To JSON method

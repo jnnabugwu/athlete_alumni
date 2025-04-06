@@ -70,3 +70,12 @@ class AuthSignInRequested extends AuthEvent {
   @override
   List<Object?> get props => [email, password];
 }
+
+class UpdateAthleteProfile extends AuthEvent {
+  final Athlete athlete;
+
+  const UpdateAthleteProfile(this.athlete);
+
+  @override
+  List<Object?> get props => [athlete];
+}

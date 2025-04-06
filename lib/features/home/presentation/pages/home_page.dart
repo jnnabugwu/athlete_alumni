@@ -70,12 +70,28 @@ class HomePage extends StatelessWidget {
                 ),
                 const SizedBox(height: 32),
                 ElevatedButton(
-                  onPressed: () {
-                    if (isAuthenticated) {
-                      context.go(RouteConstants.myProfile);
-                    } else {
-                      context.go(RouteConstants.register);
-                    }
+                  onPressed: () async {
+                    // Show a snackbar to indicate navigation attempt
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Navigating to your profile...'),
+                        duration: Duration(seconds: 1),
+                      ),
+                    );
+                    
+                    // Get the current auth state
+                    final authState = context.read<AuthBloc>().state;
+                    
+                    // Check for athlete ID first, fall back to generating a unique ID if needed
+                    final String profileId = authState.athlete?.id.isNotEmpty == true 
+                        ? authState.athlete!.id
+                        : 'user-${DateTime.now().millisecondsSinceEpoch}';
+                    
+                    debugPrint("HomePage button: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
+                    
+                    // Always navigate directly to the user's profile with their ID
+                    // The profile screen will handle whether this is a new user or not
+                    context.go('/profile/$profileId');
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
@@ -85,10 +101,19 @@ class HomePage extends StatelessWidget {
                       vertical: 16,
                     ),
                   ),
-                  child: Text(
-                    isAuthenticated ? 'Go to Profile' : 'Get Started',
-                    style: const TextStyle(fontSize: 18),
-                  ),
+                  child: state.status == AuthStatus.loading || state.status == AuthStatus.initial
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                          ),
+                        )
+                      : Text(
+                          state.status == AuthStatus.authenticated ? 'Go to Profile' : 'Get Started',
+                          style: const TextStyle(fontSize: 18),
+                        ),
                 ),
               ],
             ),

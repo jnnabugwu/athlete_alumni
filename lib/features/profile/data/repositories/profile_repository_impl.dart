@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dartz/dartz.dart';
-import 'package:injectable/injectable.dart';
+// import 'package:injectable/injectable.dart';  // Not needed
 import '../../../../core/models/athlete.dart';
 import '../../../../core/errors/failures.dart';
 import '../../../../core/network/network_info.dart';
@@ -11,7 +11,7 @@ import '../../domain/repositories/profile_repository.dart';
 import '../datasources/profile_remote_datasource.dart';
 import '../../../../core/errors/exceptions.dart';
 
-@Injectable(as: ProfileRepository)
+// @Injectable(as: ProfileRepository)  // Removed since not using code generation
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;

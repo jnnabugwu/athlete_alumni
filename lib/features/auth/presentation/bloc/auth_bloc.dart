@@ -22,6 +22,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthErrorOccurred>(_onAuthErrorOccurred);
     on<AuthSignUpRequested>(_onAuthSignUpRequested);
     on<AuthSignInRequested>(_onAuthSignInRequested);
+    on<UpdateAthleteProfile>(_onUpdateAthleteProfile);
 
     // Initialize auth state listener
     _authSubscription = WebStorage.onAuthStateChange.listen((_) {
@@ -104,10 +105,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (isSignedIn) {
         debugPrint("AuthBloc: User is signed in, getting athlete data");
         final athlete = await _authRepository.getCurrentAthlete();
+        
+        // Allow authentication even if athlete data is null
         emit(AuthState(
           status: AuthStatus.authenticated,
           athlete: athlete,
         ));
+        
+        if (athlete != null) {
+          debugPrint("AuthBloc: Authenticated with athlete data, ID: ${athlete.id}");
+        } else {
+          debugPrint("AuthBloc: Authenticated but athlete data is null (this is ok for new users)");
+        }
       } else {
         debugPrint("AuthBloc: User is not signed in");
         emit(const AuthState(status: AuthStatus.unauthenticated));
@@ -241,6 +250,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       add(const AuthCheckRequested());
     } catch (e) {
       add(AuthErrorOccurred(e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateAthleteProfile(
+    UpdateAthleteProfile event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('AuthBloc: Updating athlete profile in auth state: ${event.athlete.id}');
+      
+      // Emit new state with updated athlete
+      final newState = state.copyWith(
+        athlete: event.athlete,
+      );
+      
+      emit(newState);
+      await _persistState(newState);
+      
+      debugPrint('AuthBloc: Athlete profile updated in auth state');
+    } catch (e) {
+      debugPrint('AuthBloc: Error updating athlete profile: $e');
+      add(AuthErrorOccurred('Failed to update athlete profile: ${e.toString()}'));
     }
   }
 

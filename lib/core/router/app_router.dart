@@ -4,6 +4,7 @@ import 'package:athlete_alumni/features/athletes/presentation/bloc/filter_athlet
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:athlete_alumni/core/di/injection.dart';
 import 'package:athlete_alumni/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
@@ -12,6 +13,8 @@ import 'package:athlete_alumni/features/profile/domain/usecases/update_profile_u
 import 'package:athlete_alumni/features/profile/domain/usecases/upload_profile_image_usecase.dart';
 import 'package:athlete_alumni/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:athlete_alumni/features/profile/presentation/screens/profile_screen.dart';
+import 'package:athlete_alumni/features/profile/presentation/screens/edit_profile_screen.dart';
+import 'package:athlete_alumni/features/profile/presentation/bloc/edit_profile_bloc.dart';
 
 import 'package:athlete_alumni/core/router/route_constants.dart';
 
@@ -135,6 +138,173 @@ final appRouter = GoRouter(
           ),
         );
       },
+      routes: [
+        // Add a child route for editing profiles
+        GoRoute(
+          path: 'edit',
+          name: 'editProfile',
+          builder: (context, state) {
+            final id = state.pathParameters['id'] ?? '';
+            debugPrint("Edit Profile Route: Building with id=$id");
+            
+            // Check if this is a temporary user ID
+            final bool isTemporaryId = id.startsWith('user-') || 
+                                      id == 'unknown-user-id' ||
+                                      id == 'new-user';
+            
+            // Create a new ProfileBloc instead of trying to access one from the parent context
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (context) {
+                    final profileBloc = ProfileBloc(
+                      getProfileUseCase: sl<GetProfileUseCase>(),
+                      updateProfileUseCase: sl<UpdateProfileUseCase>(),
+                      uploadProfileImageUseCase: sl<UploadProfileImageUseCase>(),
+                    );
+                    
+                    if (isTemporaryId) {
+                      // For temporary IDs, initialize a new profile
+                      final authBloc = sl<AuthBloc>();
+                      final authState = authBloc.state;
+                      
+                      // Extract email from auth state if available
+                      final String? email = authState.status == AuthStatus.authenticated && 
+                                         authState.athlete != null && 
+                                         authState.athlete!.email != null && 
+                                         authState.athlete!.email!.isNotEmpty
+                          ? authState.athlete!.email
+                          : null;
+                          
+                      // Extract username and other data from auth state
+                      String? fullName = null;
+                      String? username = null;
+                      String? college = null;
+                      AthleteStatus? athleteStatus = null;
+                      
+                      if (authState.status == AuthStatus.authenticated) {
+                        // Try to get user metadata from auth session
+                        final supabaseClient = sl<SupabaseClient>();
+                        final currentUser = supabaseClient.auth.currentUser;
+                        if (currentUser != null) {
+                          final userData = currentUser.userMetadata;
+                          if (userData != null) {
+                            debugPrint("Edit Profile Route: Found user metadata: $userData");
+                            fullName = userData['full_name'] as String?;
+                            username = userData['username'] as String?;
+                            college = userData['college'] as String?;
+                            final statusStr = userData['athlete_status'] as String?;
+                            if (statusStr != null) {
+                              athleteStatus = statusStr == 'former' ? 
+                                  AthleteStatus.former : AthleteStatus.current;
+                            }
+                          }
+                          
+                          // If metadata didn't have username, try getting from user
+                          if (username == null) {
+                            // We can't use await here, so we'll just use any data we already have
+                            // and let the ProfileBloc handle fetching additional data
+                            debugPrint("Edit Profile Route: Could not get username from metadata, will attempt fetch in ProfileBloc");
+                          }
+                        }
+                      }
+                     
+                      // Provide defaults for username if not found to avoid database errors
+                      if (username == null) {
+                        username = "user_${DateTime.now().millisecondsSinceEpoch.toString().substring(0, 8)}";
+                        debugPrint("Edit Profile Route: Generated default username: $username");
+                      }
+                          
+                      debugPrint("Edit Profile Route: Initializing new profile for temporary ID: $id");
+                      profileBloc.add(InitializeNewProfileEvent(
+                        authUserId: id,
+                        email: email,
+                        fullName: fullName,
+                        username: username,
+                        college: college,
+                        athleteStatus: athleteStatus,
+                      ));
+                    } else {
+                      // For regular IDs, load the profile data
+                      debugPrint("Edit Profile Route: Loading profile data for ID: $id");
+                      profileBloc.add(GetProfileEvent(id));
+                    }
+                    
+                    return profileBloc;
+                  },
+                ),
+                BlocProvider(
+                  create: (context) => sl<EditProfileBloc>(),
+                ),
+              ],
+              child: Builder(
+                builder: (context) {
+                  // Use the Builder to get a context that has access to the ProfileBloc
+                  return BlocBuilder<ProfileBloc, ProfileState>(
+                    builder: (context, profileState) {
+                      if (profileState is ProfileLoaded) {
+                        // Initialize the EditProfileBloc with the loaded athlete data
+                        context.read<EditProfileBloc>().add(InitializeEditProfileEvent(profileState.athlete));
+                        return EditProfileScreen(athlete: profileState.athlete);
+                      }
+                      
+                      // Show loading indicator while the profile is loading
+                      if (profileState is ProfileLoading) {
+                        return Scaffold(
+                          appBar: AppBar(title: const Text('Loading Profile')),
+                          body: const Center(child: CircularProgressIndicator()),
+                        );
+                      }
+                      
+                      // Handle error state - initialize with default data for new users
+                      if (profileState is ProfileError && isTemporaryId) {
+                        debugPrint("Edit Profile Route: Creating default athlete data for temporary ID: $id");
+                        
+                        // Create minimal athlete data for the form
+                        final authBloc = sl<AuthBloc>();
+                        final authState = authBloc.state;
+                        final email = authState.status == AuthStatus.authenticated && 
+                                      authState.athlete?.email != null ? 
+                                      authState.athlete!.email : '';
+                        
+                        // Create a minimal athlete with just the ID and email
+                        final defaultAthlete = Athlete(
+                          id: id,
+                          email: email,
+                          name: '',
+                          status: AthleteStatus.current,
+                          major: AthleteMajor.other,
+                          career: AthleteCareer.other,
+                        );
+                        
+                        // Initialize the EditProfileBloc with the default athlete
+                        context.read<EditProfileBloc>().add(InitializeEditProfileEvent(defaultAthlete));
+                        return EditProfileScreen(athlete: defaultAthlete);
+                      }
+                      
+                      // Show error screen if profile loading failed and it's not a new user
+                      return Scaffold(
+                        appBar: AppBar(title: const Text('Edit Profile')),
+                        body: const Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.error_outline, size: 48, color: Colors.red),
+                              SizedBox(height: 16),
+                              Text('Failed to load profile data'),
+                              SizedBox(height: 16),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+            );
+          },
+        ),
+      ],
     ),
     
     // My Profile - shortcut for current user
@@ -152,19 +322,42 @@ final appRouter = GoRouter(
         // For dev bypass, use a mock ID
         if (isDevBypass) {
           debugPrint("MyProfile Route: Dev bypass detected, using mock ID");
-          // Just return the path - the redirect method will preserve the extras
           return '/profile/mock-id-123';
         }
         
-        // Normal flow - check for authenticated user
-        final currentUser = _getCurrentUser();
-        if (currentUser != null) {
-          debugPrint("MyProfile Route: Using current user ID: ${currentUser.id}");
-          return '/profile/${currentUser.id}';
+        // Get the current auth state
+        final authBloc = sl<AuthBloc>();
+        final authState = authBloc.state;
+        
+        // We need to handle unauthenticated users
+        if (authState.status == AuthStatus.unauthenticated) {
+          debugPrint("MyProfile Route: User is not authenticated, redirecting to login");
+          return RouteConstants.login;
         }
         
-        debugPrint("MyProfile Route: No current user, redirecting to login");
-        return RouteConstants.login;
+        // If we have athlete data with an ID, use that ID
+        if (authState.athlete != null && authState.athlete!.id.isNotEmpty) {
+          final athleteId = authState.athlete!.id;
+          debugPrint("MyProfile Route: User has athlete ID: $athleteId, redirecting");
+          return '/profile/$athleteId';
+        } 
+        
+        // For authenticated users with no athlete data, generate a unique ID
+        if (authState.status == AuthStatus.authenticated) {
+          final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+          debugPrint("MyProfile Route: Generating unique ID for user: $uniqueId");
+          return '/profile/$uniqueId';
+        }
+        
+        // Auth is still loading, use the builder to show loading screen
+        debugPrint("MyProfile Route: Auth state is ${authState.status}, using loading screen");
+        return state.uri.path; // Return current path to force using the builder
+      },
+      // Add a builder as a fallback to prevent it from being a redirect-only route
+      builder: (context, state) {
+        debugPrint("MyProfile Route: Builder called - this should only happen when loading auth state");
+        // When auth is loading, show the ProfileLoadingScreen which will auto-navigate when auth is ready
+        return const ProfileLoadingScreen();
       },
     ),
 
@@ -208,7 +401,8 @@ bool _isAuthenticated() {
 // Helper to get the current user
 Athlete? _getCurrentUser() {
   final authState = sl<AuthBloc>().state;
-  if (authState.status == AuthStatus.authenticated) {
+  // Only return athlete if fully authenticated
+  if (authState.status == AuthStatus.authenticated && authState.athlete != null) {
     return authState.athlete;
   }
   return null;
@@ -238,5 +432,104 @@ class GoRouterRefreshStream extends ChangeNotifier {
   void dispose() {
     _subscription.cancel();
     super.dispose();
+  }
+}
+
+// Add this class at the end of the file, right before the last closing brace
+class ProfileLoadingScreen extends StatefulWidget {
+  const ProfileLoadingScreen({Key? key}) : super(key: key);
+
+  @override
+  State<ProfileLoadingScreen> createState() => _ProfileLoadingScreenState();
+}
+
+class _ProfileLoadingScreenState extends State<ProfileLoadingScreen> {
+  Timer? _navigationTimer;
+  bool _hasAttemptedNavigation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Schedule a single navigation attempt after widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _attemptDirectNavigation();
+    });
+  }
+  
+  void _attemptDirectNavigation() {
+    if (_hasAttemptedNavigation) return;
+    _hasAttemptedNavigation = true;
+    
+    // Show feedback to user
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Taking you to your profile...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    
+    // Let's just check for athlete data directly
+    final authBloc = sl<AuthBloc>();
+    final authState = authBloc.state;
+    
+    // Delay slightly to let any state updates propagate
+    _navigationTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      
+      debugPrint("ProfileLoadingScreen: Direct navigation attempt");
+      
+      // Generate a profile ID - either use existing athlete ID or create a new unique one
+      final String profileId = authState.athlete?.id.isNotEmpty == true
+          ? authState.athlete!.id
+          : 'user-${DateTime.now().millisecondsSinceEpoch}';
+      
+      debugPrint("ProfileLoadingScreen: Using profile ID: $profileId");
+      context.go('/profile/$profileId');
+    });
+  }
+
+  @override
+  void dispose() {
+    _navigationTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Loading Profile')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(),
+            const SizedBox(height: 24),
+            const Text('Loading your profile...', style: TextStyle(fontSize: 18)),
+            const SizedBox(height: 16),
+            const Text('Please wait while we prepare your data', style: TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 48),
+            ElevatedButton(
+              onPressed: () {
+                // Manual navigation attempt
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Trying again...'),
+                    duration: Duration(seconds: 1),
+                  ),
+                );
+                
+                // Generate a unique ID for the user
+                final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+                debugPrint("Retry button: Using generated profile ID: $uniqueId");
+                
+                // Navigate directly to profile with the unique ID
+                context.go('/profile/$uniqueId');
+              },
+              child: const Text('Retry Navigation'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

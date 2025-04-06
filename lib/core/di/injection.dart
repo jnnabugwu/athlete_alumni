@@ -97,8 +97,10 @@ Future<void> _initProfile() async {
     networkInfo: sl<NetworkInfo>(),
   ));
   
-  // Data sources - Using the mock implementation for development
-  sl.registerLazySingleton<ProfileRemoteDataSource>(() => ProfileRemoteDataSourceImpl());
+  // Data sources - Update to use SupabaseClient
+  sl.registerLazySingleton<ProfileRemoteDataSource>(() => ProfileRemoteDataSourceImpl(
+    supabaseClient: sl<SupabaseClient>(),
+  ));
 }
 
 void _registerAthletesDependencies() {
@@ -108,7 +110,7 @@ void _registerAthletesDependencies() {
   );
   
   // Use cases
-  sl.registerLazySingleton(
+  sl.registerLazySingleton  (
     () => GetAllAthletesUseCase(sl()),
   );
   
