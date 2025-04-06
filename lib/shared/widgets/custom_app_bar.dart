@@ -46,7 +46,16 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   } else if (value == 'settings') {
                     // Navigate to settings page when implemented
                   } else if (value == 'logout') {
+                    // Get the AuthBloc and dispatch logout event
                     context.read<AuthBloc>().add(const AuthSignedOut());
+                    
+                    // Show message
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Logging out...')),
+                    );
+                    
+                    // Navigate to login screen
+                    context.go(RouteConstants.login);
                   }
                 },
                 child: Padding(
