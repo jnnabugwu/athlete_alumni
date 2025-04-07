@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 part 'auth_event.dart';
 part 'auth_state.dart';
 
@@ -47,6 +48,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       debugPrint("AuthBloc: Loading persisted state");
+      
+      // First, check for OAuth redirect sessions if we're on web
+      if (kIsWeb) {
+        try {
+          final hasRedirectSession = await _googleAuthService.checkForRedirectSession();
+          if (hasRedirectSession) {
+            debugPrint("AuthBloc: Detected and processed OAuth redirect session");
+          }
+        } catch (e) {
+          debugPrint("AuthBloc: Error checking for redirect session: $e");
+        }
+      }
+      
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
@@ -108,11 +122,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       debugPrint("AuthBloc: Checking auth status");
+      
+      // Run diagnostics on the authentication state
+      await _googleAuthService.debugAuthState();
+      
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
         debugPrint("AuthBloc: User is signed in, getting athlete data");
         final athlete = await _authRepository.getCurrentAthlete();
+        
+        if (athlete == null) {
+          debugPrint("AuthBloc: Athlete data is null, but user is signed in. This may indicate a database issue.");
+          
+          // Log the current user information for debugging
+          final user = Supabase.instance.client.auth.currentUser;
+          if (user != null) {
+            debugPrint("AuthBloc: Current user ID: ${user.id}");
+            debugPrint("AuthBloc: Current user email: ${user.email}");
+          } else {
+            debugPrint("AuthBloc: No current user found in Supabase client");
+          }
+        }
         
         // Allow authentication even if athlete data is null
         emit(AuthState(
@@ -339,46 +370,55 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     try {
-      debugPrint('AuthBloc: Processing Google sign-in request');
+      debugPrint('AuthBloc: Google sign in requested');
       emit(state.copyWith(status: AuthStatus.loading));
-      
+
       final response = await _googleAuthService.signInWithGoogle();
       
-      if (response != null) {
-        debugPrint('AuthBloc: Google sign-in successful');
-        
-        // Get athlete data from Supabase
-        final athlete = await _authRepository.getCurrentAthlete();
-        
-        // Check if this is a new user (first time sign-in)
-        final bool isNewUser = response.user?.createdAt == response.user?.lastSignInAt;
-        
-        if (isNewUser) {
-          debugPrint('AuthBloc: This appears to be a new Google user');
-          
-          // For new users, we might want to set initial state differently
-          emit(AuthState(
-            status: AuthStatus.authenticated,
-            athlete: athlete,
-            isNewUser: true,
-          ));
-        } else {
-          // Existing user
-          debugPrint('AuthBloc: Existing Google user signed in');
-          
-          emit(AuthState(
-            status: AuthStatus.authenticated,
-            athlete: athlete,
-          ));
-        }
-      } else {
-        // User canceled the sign-in flow
+      // User canceled sign-in
+      if (response == null) {
         debugPrint('AuthBloc: Google sign-in was canceled by user');
         emit(state.copyWith(status: AuthStatus.unauthenticated));
+        return;
       }
+      
+      debugPrint('AuthBloc: Google sign-in successful');
+      
+      // Gets current athlete data
+      final athlete = await _authRepository.getCurrentAthlete();
+      
+      // Determines if this is a new user or existing user
+      final isNewUser = response.user?.createdAt == response.user?.lastSignInAt;
+      
+      // Emits the appropriate state
+      final newState = state.copyWith(
+        status: AuthStatus.authenticated,
+        athlete: athlete,
+        isNewUser: isNewUser,
+      );
+      
+      emit(newState);
+      
+      await _persistState(newState);
     } catch (e) {
       debugPrint('AuthBloc: Error during Google sign-in: $e');
-      add(AuthErrorOccurred(e.toString()));
+      String errorMessage = '';
+      
+      if (e.toString().contains('No ID Token found')) {
+        errorMessage = 'Unable to get authentication token from Google. Please make sure third-party cookies are enabled in your browser settings.';
+      } else {
+        errorMessage = 'Failed to sign in with Google: ${e.toString()}';
+      }
+      
+      // Emit error state with more descriptive message
+      final errorState = state.copyWith(
+        status: AuthStatus.error,
+        errorMessage: errorMessage,
+      );
+      
+      emit(errorState);
+      
+      await _persistState(errorState);
     }
   }
 

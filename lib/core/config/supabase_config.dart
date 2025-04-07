@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:js' as js;
 import '../../utils/environment.dart';
+import '../../features/auth/data/services/google_auth_service.dart';
 
 class SupabaseConfig {
   static String get supabaseUrl {
@@ -64,11 +65,45 @@ class SupabaseConfig {
         debugPrint('⚠️ Connection test failed: $e');
       }
       
+      // Handle OAuth redirects for web (if we came from an OAuth flow)
+      if (kIsWeb) {
+        debugPrint('🔄 Checking for OAuth redirects...');
+        
+        // Delay slightly to ensure the app is fully loaded
+        await Future.delayed(Duration(milliseconds: 500));
+        
+        _handlePossibleOAuthRedirect(client);
+      }
+      
       debugPrint('✅ Supabase initialized successfully');
     } catch (e, stackTrace) {
       debugPrint('❌ Error initializing Supabase: $e');
       debugPrint('📚 Stack trace: $stackTrace');
       rethrow;
+    }
+  }
+  
+  /// Handle OAuth redirects for web platforms
+  static void _handlePossibleOAuthRedirect(SupabaseClient client) {
+    if (!kIsWeb) return;
+    
+    try {
+      // Create a GoogleAuthService instance to handle the redirect
+      final googleAuthService = GoogleAuthService();
+      
+      // Use the improved method that properly refreshes the session
+      googleAuthService.checkForRedirectSession().then((success) {
+        if (success) {
+          debugPrint('✅ Successfully processed OAuth redirect and established session');
+          // The Google auth service has already refreshed the session
+        } else {
+          debugPrint('ℹ️ No OAuth redirect detected or session couldn\'t be established');
+        }
+      }).catchError((error) {
+        debugPrint('❌ Error handling OAuth redirect: $error');
+      });
+    } catch (e) {
+      debugPrint('❌ Error handling OAuth redirect: $e');
     }
   }
 

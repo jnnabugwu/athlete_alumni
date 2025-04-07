@@ -31,7 +31,26 @@
 
   <!-- Google Sign-In Client ID -->
   <meta name="google-signin-client_id" content="735463188812-jk93h4mn6l9pmphkm9vvggg7q4egpaai.apps.googleusercontent.com">
-  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  
+  <!-- Load Google API scripts properly -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <script>
+    // Handle OAuth redirects - Simplified approach
+    window.onload = function() {
+      console.log("App initialized, checking for OAuth parameters");
+      
+      // Check URL for auth parameters
+      const hasAuthParams = window.location.href.includes('access_token=') || 
+                          window.location.href.includes('refresh_token=') || 
+                          window.location.href.includes('code=');
+      
+      if (hasAuthParams) {
+        console.log("OAuth redirect detected with auth parameters");
+        // Let Flutter/Supabase handle the parameters - we don't need to do anything here
+      }
+    };
+  </script>
 
   <title>Athlete Alumni</title>
   <link rel="manifest" href="manifest.json">

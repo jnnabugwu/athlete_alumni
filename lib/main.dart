@@ -5,6 +5,7 @@ import 'package:athlete_alumni/core/di/injection.dart' as di;
 import 'package:athlete_alumni/core/router/app_router.dart';
 import 'package:athlete_alumni/utils/environment.dart';
 import 'package:athlete_alumni/core/config/supabase_config.dart';
+import 'package:athlete_alumni/features/auth/data/services/google_auth_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,6 +32,42 @@ void main() async {
     await di.init();
     if (kDebugMode) {
       print('✅ Dependency injection initialized');
+    }
+    
+    // Check for OAuth redirects - this is important for web
+    if (kIsWeb) {
+      try {
+        if (kDebugMode) {
+          print('🔍 Checking for OAuth redirects in web environment');
+        }
+        
+        final googleAuthService = GoogleAuthService();
+        
+        // First, check for and process any redirect
+        final hasRedirectSession = await googleAuthService.checkForRedirectSession();
+        
+        if (kDebugMode) {
+          print(hasRedirectSession 
+            ? '✅ Successfully processed OAuth redirect session' 
+            : '⚠️ No OAuth redirect session detected - this is normal if not coming from a redirect');
+        }
+        
+        // Verify the current auth state
+        await googleAuthService.debugAuthState();
+        
+        if (kDebugMode) {
+          final session = Supabase.instance.client.auth.currentSession;
+          if (session != null) {
+            print('🔐 User is authenticated: ${session.user.email}');
+          } else {
+            print('🔓 No authenticated user');
+          }
+        }
+      } catch (e) {
+        if (kDebugMode) {
+          print('❌ Error during auth initialization: $e');
+        }
+      }
     }
 
     runApp(const MyApp());
