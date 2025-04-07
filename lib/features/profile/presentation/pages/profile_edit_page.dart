@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import '../../../../core/models/athlete.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,6 +23,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   late TextEditingController _usernameController;
   late TextEditingController _universityController;
   late TextEditingController _sportController;
+  late TextEditingController _emailController;
   late AthleteStatus _athleteStatus;
   late AthleteMajor _selectedMajor;
   late AthleteCareer _selectedCareer;
@@ -37,10 +39,16 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   @override
   void initState() {
     super.initState();
+    
+    // Debug info for initialization
+    debugPrint('🔍 ProfileEditPage init - Athlete ID: ${widget.athlete.id}');
+    debugPrint('🔍 ProfileEditPage init - Athlete email: "${widget.athlete.email}"');
+    
     _fullNameController = TextEditingController(text: widget.athlete.name ?? '');
     _usernameController = TextEditingController(text: widget.athlete.username ?? '');
     _universityController = TextEditingController(text: widget.athlete.university ?? '');
     _sportController = TextEditingController(text: widget.athlete.sport ?? '');
+    _emailController = TextEditingController(text: '');
     _athleteStatus = widget.athlete.status;
     _selectedMajor = widget.athlete.major;
     _selectedCareer = widget.athlete.career;
@@ -58,23 +66,132 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   }
 
   void _initializeEmail() {
-    // First try to get email from athlete object
-    if (widget.athlete.email != null && widget.athlete.email!.isNotEmpty) {
-      _email = widget.athlete.email!;
-      debugPrint('📧 Email from athlete object: $_email');
+    // Debug the auth state
+    final user = Supabase.instance.client.auth.currentUser;
+    debugPrint('🔒 Auth check - Is user authenticated: ${user != null}');
+    if (user != null) {
+      debugPrint('🔒 Auth user ID: ${user.id}');
+      debugPrint('🔒 Auth user email: ${user.email}');
+      debugPrint('🔒 Auth user has identities: ${user.identities?.isNotEmpty}');
+      
+      // Log all available user data for debugging
+      debugPrint('🔒 Auth user data: ${user.toJson()}');
+    }
+    
+    // Check all possible sources for email and use the first valid one found
+    
+    // 1. Try from athlete object (if not empty)
+    debugPrint('📧 Checking athlete email: "${widget.athlete.email}"');
+    if (widget.athlete.email.isNotEmpty && widget.athlete.email != 'null') {
+      setState(() {
+        _email = widget.athlete.email;
+        _emailController.text = _email;
+        debugPrint('📧 Email set from athlete object: $_email');
+      });
       return;
     }
     
-    // If not available, try to get it from Supabase auth
-    final user = Supabase.instance.client.auth.currentUser;
+    // 2. Try from Supabase auth currentUser.email
     if (user != null && user.email != null && user.email!.isNotEmpty) {
       setState(() {
         _email = user.email!;
-        debugPrint('📧 Email from Supabase auth: $_email');
+        _emailController.text = _email;
+        debugPrint('📧 Email set from Supabase auth: $_email');
       });
-    } else {
-      debugPrint('⚠️ Could not find email from athlete object or Supabase auth');
+      return;
     }
+    
+    // 3. Try from user.userMetadata
+    if (user != null && user.userMetadata != null) {
+      final metadata = user.userMetadata!;
+      
+      // Check for email in various metadata fields
+      for (final field in ['email', 'email_address', 'google_email']) {
+        if (metadata.containsKey(field) && 
+            metadata[field] != null && 
+            metadata[field].toString().isNotEmpty) {
+          setState(() {
+            _email = metadata[field].toString();
+            _emailController.text = _email;
+            debugPrint('📧 Email set from user metadata field "$field": $_email');
+          });
+          return;
+        }
+      }
+      
+      // Log all metadata for debugging
+      debugPrint('📧 All user metadata: $metadata');
+    }
+    
+    // 4. Try from user identities (for OAuth providers like Google)
+    if (user != null && user.identities != null && user.identities!.isNotEmpty) {
+      for (final identity in user.identities!) {
+        // Try to access the email from identity data
+        final identityData = identity.identityData;
+        debugPrint('🔍 Checking identity data: $identityData');
+        
+        if (identityData != null) {
+          // Check for email in various identity fields
+          for (final field in ['email', 'email_address']) {
+            if (identityData.containsKey(field) && 
+                identityData[field] != null && 
+                identityData[field].toString().isNotEmpty) {
+              setState(() {
+                _email = identityData[field].toString();
+                _emailController.text = _email;
+                debugPrint('📧 Email set from identity data field "$field": $_email');
+              });
+              return;
+            }
+          }
+        }
+      }
+    }
+    
+    // If still no email, try one more source - the session
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        // Try to extract email from the session
+        final accessToken = session.accessToken;
+        final refreshToken = session.refreshToken;
+        
+        debugPrint('🔑 Session exists: ${session != null}');
+        debugPrint('🔑 Access token exists: ${accessToken != null}');
+        debugPrint('🔑 Refresh token exists: ${refreshToken != null}');
+        
+        // Check if session has user info
+        if (session.user != null && session.user.email != null && session.user.email!.isNotEmpty) {
+          setState(() {
+            _email = session.user.email!;
+            _emailController.text = _email;
+            debugPrint('📧 Email set from session user: $_email');
+          });
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('❌ Error checking session: $e');
+    }
+    
+    // If still no email, log the situation
+    debugPrint('⚠️ Could not find email from any source');
+    
+    // Log the current user to help debug
+    if (user != null) {
+      debugPrint('📱 Current user id: ${user.id}');
+      debugPrint('📱 Current user metadata: ${user.userMetadata}');
+      debugPrint('📱 Current user app metadata: ${user.appMetadata}');
+    } else {
+      debugPrint('⚠️ No current user found in Supabase');
+    }
+    
+    // Set a fallback email if we couldn't find any
+    setState(() {
+      _email = 'No email found';
+      _emailController.text = _email;
+      debugPrint('⚠️ Setting fallback email text: $_email');
+    });
   }
 
   void _onFormChanged() {
@@ -89,6 +206,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _usernameController.dispose();
     _universityController.dispose();
     _sportController.dispose();
+    _emailController.dispose();
     super.dispose();
   }
 
@@ -137,7 +255,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
             width: 300,
             height: 300,
             child: ListView.builder(
-              itemCount: 20,
+              itemCount: 50,
               itemBuilder: (BuildContext context, int index) {
                 final year = DateTime.now().year - 30 + index;
                 return ListTile(
@@ -162,10 +280,15 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   void _saveChanges() {
     if (_formKey.currentState?.validate() ?? false) {
+      // Make sure we have a valid email from the email field
+      final emailToSave = _email.isNotEmpty && _email != 'No email found' 
+          ? _email 
+          : widget.athlete.email;
+          
       final updatedAthlete = widget.athlete.copyWith(
         name: _fullNameController.text,
         username: _usernameController.text,
-        email: _email,
+        email: emailToSave,
         status: _athleteStatus,
         major: _selectedMajor,
         career: _selectedCareer,
@@ -244,6 +367,42 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Email header section at the very top
+              if (_email.isNotEmpty && _email != 'No email found')
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  margin: const EdgeInsets.only(bottom: 24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE3F2FD),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Theme.of(context).primaryColor.withOpacity(0.3)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.account_circle, size: 40, color: Colors.indigo),
+                      const SizedBox(height: 8),
+                      Text(
+                        _email,
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.indigo,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Signed in with Google',
+                        style: TextStyle(
+                          color: Colors.grey[700],
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              
               _buildProfileImageSection(),
               const SizedBox(height: 24),
               
@@ -358,16 +517,43 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         ),
         const SizedBox(height: 16),
         TextFormField(
-          initialValue: _email,
+          controller: _emailController,
           readOnly: true,
           enabled: false,
-          decoration: const InputDecoration(
+          decoration: InputDecoration(
             labelText: 'Email',
-            border: OutlineInputBorder(),
-            fillColor: Color(0xFFF5F5F5),
+            border: const OutlineInputBorder(),
+            fillColor: const Color(0xFFE3F2FD), // Light blue background
             filled: true,
+            prefixIcon: _email.contains('@gmail.com')
+                ? const Icon(Icons.alternate_email, color: Colors.red)
+                : Icon(Icons.email, color: Theme.of(context).primaryColor),
+            helperText: _email.contains('@gmail.com')
+                ? 'Connected with Google Sign-In'
+                : 'Your account email (cannot be changed)',
+            labelStyle: TextStyle(
+              color: _email.contains('@gmail.com') 
+                ? Colors.red
+                : Theme.of(context).primaryColor,
+              fontWeight: FontWeight.bold,
+            ),
+            // Add more debugging information in a suffix
+            suffixIcon: _email.isEmpty || _email == 'No email found' 
+                ? const Icon(Icons.warning, color: Colors.orange)
+                : _email.contains('@gmail.com')
+                    ? const Icon(Icons.verified_user, color: Colors.green)
+                    : const Icon(Icons.check_circle, color: Colors.green),
+          ),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: _email.isEmpty || _email == 'No email found' 
+                ? Colors.red 
+                : _email.contains('@gmail.com')
+                    ? Colors.red.shade800
+                    : Colors.black,
           ),
         ),
+        
         const SizedBox(height: 24),
         
         Text(

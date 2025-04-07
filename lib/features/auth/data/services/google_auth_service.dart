@@ -2,6 +2,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:js' as js;
+import 'dart:async';
 
 // NOTE: To fix the redirect_uri_mismatch error:
 // 1. Go to Google Cloud Console: https://console.cloud.google.com/
@@ -15,13 +16,116 @@ import 'dart:js' as js;
 // 5. Click Save and wait a few minutes for changes to propagate
 
 class GoogleAuthService {
-  final GoogleSignIn _googleSignIn = GoogleSignIn(
-    // The CLIENT_ID from the Google Cloud Console
-    clientId: kIsWeb ? '735463188812-jk93h4mn6l9pmphkm9vvggg7q4egpaai.apps.googleusercontent.com' : null,
-    scopes: ['email', 'profile', 'openid'],
-  );
+  // Use a lazily initialized singleton pattern for GoogleSignIn
+  static GoogleSignIn? _instance;
+  
+  // Get the GoogleSignIn instance, creating it if it doesn't exist
+  GoogleSignIn get _googleSignIn {
+    _instance ??= GoogleSignIn(
+      // The CLIENT_ID from the Google Cloud Console
+      clientId: kIsWeb ? '735463188812-jk93h4mn6l9pmphkm9vvggg7q4egpaai.apps.googleusercontent.com' : null,
+      scopes: ['email', 'profile', 'openid'],
+    );
+    return _instance!;
+  }
   
   final SupabaseClient _supabaseClient = Supabase.instance.client;
+  
+  /// Check if we were redirected from OAuth and handle the session
+  Future<bool> checkForRedirectSession() async {
+    if (kIsWeb) {
+      try {
+        debugPrint('🧪 Checking for OAuth redirect...');
+        
+        // Get the current URL
+        final url = Uri.base.toString();
+        
+        // Check for auth-related parameters in the URL
+        final hasAuthParams = url.contains('access_token=') || 
+                            url.contains('refresh_token=') || 
+                            url.contains('code=');
+        
+        if (hasAuthParams) {
+          debugPrint('🔗 Found URL with auth parameters: $url');
+          
+          // Simple approach: Just let Supabase handle the auth parameters
+          try {
+            // 1. Let Supabase handle the URL parsing
+            await _supabaseClient.auth.getSessionFromUrl(Uri.parse(url));
+            
+            // 2. Clear the URL
+            _cleanUrl();
+            
+            // 3. Verify we have a session
+            final hasSession = _supabaseClient.auth.currentSession != null;
+            
+            if (hasSession) {
+              final user = _supabaseClient.auth.currentUser;
+              debugPrint('✅ Successfully established auth session. User: ${user?.email}');
+              return true;
+            } else {
+              debugPrint('❌ Failed to establish auth session despite valid URL parameters');
+              return false;
+            }
+          } catch (e) {
+            debugPrint('❌ Error handling auth URL: $e');
+            return false;
+          }
+        }
+        
+        // No auth parameters in URL, check if we have a session anyway
+        final currentSession = _supabaseClient.auth.currentSession;
+        if (currentSession != null) {
+          debugPrint('✅ No redirect detected, but found existing session for: ${currentSession.user.email}');
+          return true;
+        }
+        
+        debugPrint('❌ No auth parameters in URL and no existing session');
+        return false;
+      } catch (e) {
+        debugPrint('❌ Error in checkForRedirectSession: $e');
+        return false;
+      }
+    }
+    return false;
+  }
+  
+  /// Clean the URL by removing auth parameters
+  void _cleanUrl() {
+    if (kIsWeb) {
+      try {
+        // Get just the path portion of the current URL
+        final cleanUrl = Uri.base.origin + Uri.base.path;
+        js.context['history'].callMethod('replaceState', [null, '', cleanUrl]);
+        debugPrint('🧹 URL cleaned: $cleanUrl');
+      } catch (e) {
+        debugPrint('❌ Error cleaning URL: $e');
+      }
+    }
+  }
+  
+  /// Utility method to extract access token from URL
+  String _extractTokenFromUrl(String url) {
+    final uri = Uri.parse(url);
+    final accessToken = uri.queryParameters['access_token'];
+    final refreshToken = uri.queryParameters['refresh_token'];
+    
+    debugPrint('🔑 URL contains access_token: ${accessToken != null}');
+    debugPrint('🔑 URL contains refresh_token: ${refreshToken != null}');
+    
+    if (accessToken != null) {
+      return accessToken;
+    }
+    
+    // For OAuth redirects, the token might be in the fragment
+    final fragment = uri.fragment;
+    if (fragment.isNotEmpty) {
+      final params = Uri.splitQueryString(fragment);
+      return params['access_token'] ?? '';
+    }
+    
+    return '';
+  }
   
   Future<AuthResponse?> signInWithGoogle() async {
     try {
@@ -79,20 +183,31 @@ class GoogleAuthService {
     try {
       debugPrint('Using Web-specific Google Sign In approach');
       
-      // For web, we should use Supabase's OAuth provider directly
-      // This will handle the redirect and token exchange properly
+      // Get the current origin for our app to redirect back to
+      String redirectUrl;
+      final origin = Uri.base.origin;
       
-      // IMPORTANT: Use a redirect URI that's EXACTLY the same as what's configured in Google Cloud Console
-      // Dynamic port-based localhost URIs won't work reliably with Google OAuth
-      // Instead, use one of the standard URIs you've configured in Google Cloud Console
-      const String redirectUri = 'http://localhost';  // Use exactly what's in your Google Cloud Console
+      // For production environments, we should use the actual deployed URL
+      // This checks if we're running on localhost
+      if (origin.contains('localhost')) {
+        // Development environment
+        redirectUrl = '$origin/';
+        debugPrint('📱 DEVELOPMENT: Using localhost redirect: $redirectUrl');
+      } else {
+        // Production environment - use explicit production URL
+        // Replace this with your actual production URL
+        final productionUrl = origin;
+        redirectUrl = '$productionUrl/';
+        debugPrint('🌎 PRODUCTION: Using production redirect: $redirectUrl');
+      }
       
-      debugPrint('Using hard-coded redirect URI: $redirectUri');
+      debugPrint('Will redirect back to: $redirectUrl');
       
       // Use Supabase's built-in OAuth flow for Google
       final response = await _supabaseClient.auth.signInWithOAuth(
         OAuthProvider.google,
-        redirectTo: redirectUri,
+        // Specify where to redirect after Supabase completes the authentication 
+        redirectTo: redirectUrl,
         queryParams: {
           'access_type': 'offline',
           'prompt': 'consent',
@@ -102,7 +217,7 @@ class GoogleAuthService {
       debugPrint('Supabase OAuth initiated successfully');
       
       // At this point, the user will be redirected to Google's login page,
-      // and then back to your app. The session will be handled by Supabase's auth state listener.
+      // and then back to your app via Supabase. The session will be handled by Supabase.
       return null;
     } catch (e) {
       debugPrint('Error in web sign-in: $e');
@@ -117,6 +232,48 @@ class GoogleAuthService {
     } catch (e) {
       debugPrint('Error signing out: $e');
       rethrow;
+    }
+  }
+  
+  /// Utility method to diagnose authentication issues
+  Future<void> debugAuthState() async {
+    try {
+      debugPrint('🔍 AUTH DIAGNOSTICS 🔍');
+      
+      // Check current session
+      final currentSession = _supabaseClient.auth.currentSession;
+      debugPrint('👤 Has current session: ${currentSession != null}');
+      
+      if (currentSession != null) {
+        debugPrint('📧 User email: ${currentSession.user.email ?? 'Not available'}');
+        debugPrint('🆔 User ID: ${currentSession.user.id}');
+        debugPrint('⏰ Session expires at: ${currentSession.expiresAt != null ? DateTime.fromMillisecondsSinceEpoch(currentSession.expiresAt! * 1000) : 'Unknown'}');
+        
+        // Check for access and refresh tokens
+        debugPrint('🔑 Access token present: ${currentSession.accessToken.isNotEmpty}');
+        debugPrint('🔄 Refresh token present: ${currentSession.refreshToken?.isNotEmpty ?? false}');
+      }
+      
+      // Check current user
+      final currentUser = _supabaseClient.auth.currentUser;
+      debugPrint('👤 Has current user: ${currentUser != null}');
+      
+      if (currentUser != null) {
+        debugPrint('📧 User email: ${currentUser.email ?? 'Not available'}');
+        debugPrint('🆔 User ID: ${currentUser.id}');
+        debugPrint('✅ Email confirmed: ${currentUser.emailConfirmedAt != null}');
+        debugPrint('📱 Phone confirmed: ${currentUser.phoneConfirmedAt != null}');
+      }
+      
+      // Check if these match
+      if (currentSession != null && currentUser != null) {
+        final sessionMatchesUser = currentSession.user.id == currentUser.id;
+        debugPrint('🔄 Session user matches current user: $sessionMatchesUser');
+      }
+      
+      debugPrint('🔍 END AUTH DIAGNOSTICS 🔍');
+    } catch (e) {
+      debugPrint('❌ Error in debugAuthState: $e');
     }
   }
 } 

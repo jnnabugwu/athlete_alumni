@@ -8,6 +8,7 @@ import 'package:equatable/equatable.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
 import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 part 'auth_event.dart';
 part 'auth_state.dart';
 
@@ -47,6 +48,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       debugPrint("AuthBloc: Loading persisted state");
+      
+      // First, check for OAuth redirect sessions if we're on web
+      if (kIsWeb) {
+        try {
+          final hasRedirectSession = await _googleAuthService.checkForRedirectSession();
+          if (hasRedirectSession) {
+            debugPrint("AuthBloc: Detected and processed OAuth redirect session");
+          }
+        } catch (e) {
+          debugPrint("AuthBloc: Error checking for redirect session: $e");
+        }
+      }
+      
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
@@ -108,11 +122,28 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       debugPrint("AuthBloc: Checking auth status");
+      
+      // Run diagnostics on the authentication state
+      await _googleAuthService.debugAuthState();
+      
       final isSignedIn = await _authRepository.isSignedIn();
       
       if (isSignedIn) {
         debugPrint("AuthBloc: User is signed in, getting athlete data");
         final athlete = await _authRepository.getCurrentAthlete();
+        
+        if (athlete == null) {
+          debugPrint("AuthBloc: Athlete data is null, but user is signed in. This may indicate a database issue.");
+          
+          // Log the current user information for debugging
+          final user = Supabase.instance.client.auth.currentUser;
+          if (user != null) {
+            debugPrint("AuthBloc: Current user ID: ${user.id}");
+            debugPrint("AuthBloc: Current user email: ${user.email}");
+          } else {
+            debugPrint("AuthBloc: No current user found in Supabase client");
+          }
+        }
         
         // Allow authentication even if athlete data is null
         emit(AuthState(

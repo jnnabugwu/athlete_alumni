@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState;
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/router/route_constants.dart';
 import '../bloc/auth_bloc.dart';
@@ -62,10 +63,97 @@ class _LoginPageState extends State<LoginPage> {
         return Scaffold(
           body: LayoutBuilder(
             builder: (context, constraints) {
+              // Get authentication status
+              final isAuthenticated = state.status == AuthStatus.authenticated;
+              final isLoading = state.status == AuthStatus.loading;
+              final currentUser = Supabase.instance.client.auth.currentUser;
+              final userEmail = currentUser?.email ?? '';
+              
+              // Show authentication status banner if user is authenticated or loading
+              Widget? authStatusBanner;
+              if (isAuthenticated && userEmail.isNotEmpty) {
+                authStatusBanner = Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  color: Colors.green.shade100,
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Colors.green),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'You are signed in',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                              ),
+                            ),
+                            Text(
+                              userEmail,
+                              style: const TextStyle(color: Colors.black87),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          context.read<AuthBloc>().add(const AuthSignedOut());
+                        },
+                        child: const Text('Sign Out'),
+                      ),
+                    ],
+                  ),
+                );
+              } else if (isLoading) {
+                authStatusBanner = Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  color: Colors.blue.shade100,
+                  child: const Row(
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.blue),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'Signing in...',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              
+              // Return the appropriate layout with the auth banner if needed
               if (constraints.maxWidth > 1000) {
-                return _buildDesktopLayout(state);
+                return Column(
+                  children: [
+                    if (authStatusBanner != null) authStatusBanner,
+                    Expanded(child: _buildDesktopLayout(state)),
+                  ],
+                );
               } else {
-                return _buildMobileLayout(state);
+                return Column(
+                  children: [
+                    if (authStatusBanner != null) authStatusBanner,
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: _buildMobileLayout(state),
+                      ),
+                    ),
+                  ],
+                );
               }
             },
           ),

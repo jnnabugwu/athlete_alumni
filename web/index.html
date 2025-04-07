@@ -36,13 +36,18 @@
   <script src="https://accounts.google.com/gsi/client" async defer></script>
   
   <script>
-    // Only initialize Google API once
-    let gapiInitialized = false;
-    
+    // Handle OAuth redirects - Simplified approach
     window.onload = function() {
-      if (!gapiInitialized) {
-        console.log("Initializing Google identity services");
-        gapiInitialized = true;
+      console.log("App initialized, checking for OAuth parameters");
+      
+      // Check URL for auth parameters
+      const hasAuthParams = window.location.href.includes('access_token=') || 
+                          window.location.href.includes('refresh_token=') || 
+                          window.location.href.includes('code=');
+      
+      if (hasAuthParams) {
+        console.log("OAuth redirect detected with auth parameters");
+        // Let Flutter/Supabase handle the parameters - we don't need to do anything here
       }
     };
   </script>
