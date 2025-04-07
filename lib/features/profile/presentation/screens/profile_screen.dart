@@ -161,114 +161,114 @@ class _ProfileScreenState extends State<ProfileScreen> {
         BlocProvider.value(value: _authBloc),
       ],
       child: BlocConsumer<ProfileBloc, ProfileState>(
-        listener: (context, state) {
+      listener: (context, state) {
           debugPrint("ProfileScreen: BlocConsumer listener - state: ${state.runtimeType}");
-          if (state is ProfileUpdateSuccess) {
-            // Show success message
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile updated successfully')),
-            );
-          } else if (state is ProfileUpdateFailure) {
-            // Show error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to update profile: ${state.message}')),
-            );
-          } else if (state is ProfileImageUploadSuccess) {
-            // Show success message for image upload
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Profile image uploaded successfully')),
-            );
-          } else if (state is ProfileImageUploadFailure) {
-            // Show error message for image upload
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to upload image: ${state.message}')),
-            );
-          } else if (state is ProfileError) {
-            // Show general error message
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Error: ${state.message}')),
-            );
+        if (state is ProfileUpdateSuccess) {
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile updated successfully')),
+          );
+        } else if (state is ProfileUpdateFailure) {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to update profile: ${state.message}')),
+          );
+        } else if (state is ProfileImageUploadSuccess) {
+          // Show success message for image upload
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Profile image uploaded successfully')),
+          );
+        } else if (state is ProfileImageUploadFailure) {
+          // Show error message for image upload
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Failed to upload image: ${state.message}')),
+          );
+        } else if (state is ProfileError) {
+          // Show general error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: ${state.message}')),
+          );
           } else if (state is ProfileLoaded && _isNewUser) {
             // If this is a new user and we just loaded an empty profile,
             // automatically navigate to edit mode
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _navigateToEditProfile();
             });
-          }
-        },
-        builder: (context, state) {
+        }
+      },
+      builder: (context, state) {
           debugPrint("ProfileScreen: BlocConsumer builder - state: ${state.runtimeType}");
-          if (state is ProfileLoading) {
-            // Show loading indicator
+        if (state is ProfileLoading) {
+          // Show loading indicator
             debugPrint("ProfileScreen: Rendering loading indicator");
-            return const Scaffold(
-              body: Center(
-                child: CircularProgressIndicator(),
-              ),
-            );
-          } else if (state is ProfileLoaded) {
-            // Show profile page with loaded data
-            debugPrint("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
-            
-            return ProfilePage(
-              athlete: state.athlete,
-              isOwnProfile: isOwnProfile,
-              onEditPressed: () => _navigateToEditProfile(),
-            );
-          } else if (state is ProfileError) {
-            // Show error view
-            debugPrint("ProfileScreen: Rendering error view: ${state.message}");
-            return Scaffold(
-              appBar: AppBar(title: const Text('Profile')),
-              body: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                    const SizedBox(height: 16),
-                    Text('Failed to load profile: ${state.message}'),
-                    const SizedBox(height: 16),
-                    ElevatedButton(
-                      onPressed: () {
-                        if (widget.isDevMode) {
-                          // In dev mode, create and emit mock data again
-                          debugPrint("ProfileScreen: Try Again in dev mode - recreating mock athlete");
-                          final mockAthlete = Athlete(
-                            id: 'mock-id-123',
-                            name: 'Dev Test User',
-                            email: 'dev@example.com',
-                            status: AthleteStatus.current,
-                            major: AthleteMajor.computerScience,
-                            career: AthleteCareer.softwareEngineer,
-                            profileImageUrl: 'https://via.placeholder.com/150',
-                            university: 'Dev University',
-                            sport: 'Basketball',
-                            achievements: ['Created with DevBypass', 'Testing Mode'],
-                            graduationYear: DateTime(2023),
-                          );
-                          _profileBloc.emit(ProfileLoaded(mockAthlete));
-                        } else {
-                          // Retry loading profile
-                          debugPrint("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
-                          _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
-                        }
-                      },
-                      child: const Text('Try Again'),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-          
-          // Show loading by default
-          debugPrint("ProfileScreen: Rendering default loading view (initial state)");
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(),
             ),
           );
-        },
+        } else if (state is ProfileLoaded) {
+          // Show profile page with loaded data
+            debugPrint("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
+            
+          return ProfilePage(
+            athlete: state.athlete,
+              isOwnProfile: isOwnProfile,
+              onEditPressed: () => _navigateToEditProfile(),
+          );
+        } else if (state is ProfileError) {
+          // Show error view
+            debugPrint("ProfileScreen: Rendering error view: ${state.message}");
+          return Scaffold(
+            appBar: AppBar(title: const Text('Profile')),
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Failed to load profile: ${state.message}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      if (widget.isDevMode) {
+                        // In dev mode, create and emit mock data again
+                          debugPrint("ProfileScreen: Try Again in dev mode - recreating mock athlete");
+                        final mockAthlete = Athlete(
+                          id: 'mock-id-123',
+                          name: 'Dev Test User',
+                          email: 'dev@example.com',
+                          status: AthleteStatus.current,
+                          major: AthleteMajor.computerScience,
+                          career: AthleteCareer.softwareEngineer,
+                          profileImageUrl: 'https://via.placeholder.com/150',
+                          university: 'Dev University',
+                          sport: 'Basketball',
+                          achievements: ['Created with DevBypass', 'Testing Mode'],
+                          graduationYear: DateTime(2023),
+                        );
+                        _profileBloc.emit(ProfileLoaded(mockAthlete));
+                      } else {
+                        // Retry loading profile
+                          debugPrint("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
+                        _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
+                      }
+                    },
+                    child: const Text('Try Again'),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+        
+        // Show loading by default
+          debugPrint("ProfileScreen: Rendering default loading view (initial state)");
+        return const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      },
       ),
     );
   }

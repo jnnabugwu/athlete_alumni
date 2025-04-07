@@ -279,31 +279,25 @@ class _RegisterPageState extends State<RegisterPage> {
               const SizedBox(height: 12),
               Divider(color: Colors.grey[300]),
               const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () {
-                  debugPrint("🔧 Development testing registration");
-                  // Fill form with test data if empty
-                  if (_emailController.text.isEmpty) {
-                    _emailController.text = 'test.user@example.com';
-                    _passwordController.text = 'password123';
-                  }
-                  // Skip verification and go directly to home page
-                  context.go(RouteConstants.home, extra: {'devBypass': true});
-                },
+              // Google Sign-In Button
+              OutlinedButton.icon(
+                onPressed: state.status == AuthStatus.loading 
+                  ? null 
+                  : () {
+                      context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+                    },
+                icon: const Icon(
+                  Icons.login,
+                  color: Colors.blue,
+                  size: 24.0,
+                ),
+                label: const Text('Sign up with Google'),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
-                  side: BorderSide(color: Colors.grey[400]!),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
+                    side: const BorderSide(color: Colors.grey),
                   ),
-                ),
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.developer_mode, size: 20),
-                    SizedBox(width: 8),
-                    Text('Dev Registration (Bypass)'),
-                  ],
                 ),
               ),
               const SizedBox(height: 16),

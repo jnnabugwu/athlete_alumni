@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:athlete_alumni/core/utils/web_storage.dart';
 import 'package:athlete_alumni/features/auth/domain/repositories/auth_repository.dart';
+import 'package:athlete_alumni/features/auth/data/services/google_auth_service.dart';
 import 'package:equatable/equatable.dart';
 import 'package:athlete_alumni/core/models/athlete.dart';
 import 'dart:math' as math;
@@ -12,9 +13,13 @@ part 'auth_state.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final AuthRepository _authRepository;
+  late final GoogleAuthService _googleAuthService;
   StreamSubscription? _authSubscription;
 
   AuthBloc(this._authRepository) : super(const AuthState()) {
+    // Initialize GoogleAuthService
+    _googleAuthService = GoogleAuthService();
+    
     on<LoadPersistedState>(_onLoadPersistedState);
     on<AuthCheckRequested>(_onAuthCheckRequested);
     on<AuthSignedOut>(_onAuthSignedOut);
@@ -25,6 +30,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<UpdateAthleteProfile>(_onUpdateAthleteProfile);
     on<AuthPasswordResetRequested>(_onAuthPasswordResetRequested);
     on<AuthNewPasswordSubmitted>(_onAuthNewPasswordSubmitted);
+    on<AuthGoogleSignInRequested>(_onAuthGoogleSignInRequested);
 
     // Initialize auth state listener
     _authSubscription = WebStorage.onAuthStateChange.listen((_) {
@@ -324,6 +330,54 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
     } catch (e) {
       debugPrint('❌ AuthBloc: Error resetting password: $e');
+      add(AuthErrorOccurred(e.toString()));
+    }
+  }
+
+  Future<void> _onAuthGoogleSignInRequested(
+    AuthGoogleSignInRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      debugPrint('AuthBloc: Processing Google sign-in request');
+      emit(state.copyWith(status: AuthStatus.loading));
+      
+      final response = await _googleAuthService.signInWithGoogle();
+      
+      if (response != null) {
+        debugPrint('AuthBloc: Google sign-in successful');
+        
+        // Get athlete data from Supabase
+        final athlete = await _authRepository.getCurrentAthlete();
+        
+        // Check if this is a new user (first time sign-in)
+        final bool isNewUser = response.user?.createdAt == response.user?.lastSignInAt;
+        
+        if (isNewUser) {
+          debugPrint('AuthBloc: This appears to be a new Google user');
+          
+          // For new users, we might want to set initial state differently
+          emit(AuthState(
+            status: AuthStatus.authenticated,
+            athlete: athlete,
+            isNewUser: true,
+          ));
+        } else {
+          // Existing user
+          debugPrint('AuthBloc: Existing Google user signed in');
+          
+          emit(AuthState(
+            status: AuthStatus.authenticated,
+            athlete: athlete,
+          ));
+        }
+      } else {
+        // User canceled the sign-in flow
+        debugPrint('AuthBloc: Google sign-in was canceled by user');
+        emit(state.copyWith(status: AuthStatus.unauthenticated));
+      }
+    } catch (e) {
+      debugPrint('AuthBloc: Error during Google sign-in: $e');
       add(AuthErrorOccurred(e.toString()));
     }
   }

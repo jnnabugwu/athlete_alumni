@@ -233,189 +233,150 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   Widget _buildLoginForm(AuthState state) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Fixed header and form fields section
-        const Text(
-          'Welcome Back',
-          style: TextStyle(
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF0A1F44),
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          const Text(
+            'Sign In',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Sign in to your account to continue',
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey[600],
+          const SizedBox(height: 24),
+          TextFormField(
+            controller: _emailController,
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              hintText: 'Enter your email',
+              prefixIcon: Icon(Icons.email),
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.emailAddress,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your email';
+              } else if (!value.contains('@')) {
+                return 'Please enter a valid email';
+              }
+              return null;
+            },
           ),
-        ),
-        const SizedBox(height: 32),
-        Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildFormField(
-                label: 'Email',
-                controller: _emailController,
-                hintText: 'Enter your email',
-                keyboardType: TextInputType.emailAddress,
+          const SizedBox(height: 16),
+          TextFormField(
+            controller: _passwordController,
+            decoration: const InputDecoration(
+              labelText: 'Password',
+              hintText: 'Enter your password',
+              prefixIcon: Icon(Icons.lock),
+              border: OutlineInputBorder(),
+            ),
+            obscureText: true,
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter your password';
+              } else if (value.length < 6) {
+                return 'Password must be at least 6 characters';
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                context.go(RouteConstants.passwordReset);
+              },
+              child: const Text('Forgot Password?'),
+            ),
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: state.status == AuthStatus.loading ? null : _handleLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
-              const SizedBox(height: 24),
-              _buildFormField(
-                label: 'Password',
-                controller: _passwordController,
-                hintText: 'Enter your password',
-                isPassword: true,
-              ),
-              const SizedBox(height: 32),
-              ElevatedButton(
-                onPressed: state.status == AuthStatus.loading ? null : _handleLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF0A1F44),
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+              elevation: 2,
+            ),
+            child: state.status == AuthStatus.loading
+                ? const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      strokeWidth: 2.0,
+                    ),
+                  )
+                : const Text(
+                    'Sign In',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
+          ),
+          const SizedBox(height: 24),
+          
+          // Or separator
+          const Row(
+            children: [
+              Expanded(child: Divider()),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Text(
+                  'OR',
+                  style: TextStyle(color: Colors.grey),
                 ),
-                child: state.status == AuthStatus.loading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                        ),
-                      )
-                    : const Text(
-                        'Sign In',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.white,
-                        ),
-                      ),
+              ),
+              Expanded(child: Divider()),
+            ],
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Google Sign-In Button
+          OutlinedButton.icon(
+            onPressed: state.status == AuthStatus.loading 
+              ? null 
+              : () {
+                  context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+                },
+            icon: const Icon(
+              Icons.login,
+              color: Colors.blue,
+              size: 24.0,
+            ),
+            label: const Text('Sign in with Google'),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+                side: const BorderSide(color: Colors.grey),
+              ),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Don't have an account? "),
+              TextButton(
+                onPressed: () {
+                  context.go(RouteConstants.register);
+                },
+                child: const Text('Sign Up'),
               ),
             ],
           ),
-        ),
-        
-        // Scrollable buttons section
-        Expanded(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 12),
-                Divider(color: Colors.grey[300]),
-                const SizedBox(height: 12),
-                /*
-                // Dev login button
-                OutlinedButton(
-                  onPressed: () {
-                    print("Dev login clicked - direct navigation bypass");
-                    try {
-                      context.go(RouteConstants.home, extra: {'devBypass': true});
-                    } catch (e) {
-                      print("Error in dev login bypass: $e");
-                    }
-                  },
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    side: BorderSide(color: Colors.grey[400]!),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.developer_mode, size: 20),
-                      SizedBox(width: 8),
-                      Text('Dev Login (Direct Bypass)'),
-                    ],
-                  ),
-                ),
-                */
-                const SizedBox(height: 12),
-                // Links section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    TextButton(
-                      onPressed: () => context.go(RouteConstants.register),
-                      child: const Text('Create an account'),
-                    ),
-                    TextButton(
-                      onPressed: () => context.go(RouteConstants.passwordReset),
-                      child: const Text('Forgot password?'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'By continuing, you agree to our Terms of Service and Privacy Policy.',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[600],
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFormField({
-    required String label,
-    required TextEditingController controller,
-    required String hintText,
-    bool isPassword = false,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontWeight: FontWeight.w500,
-            color: Color(0xFF0A1F44),
-          ),
-        ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: isPassword,
-          keyboardType: keyboardType,
-          decoration: InputDecoration(
-            hintText: hintText,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'Please enter your ${label.toLowerCase()}';
-            }
-            if (label == 'Email' && !value.contains('@')) {
-              return 'Please enter a valid email';
-            }
-            if (label == 'Password' && value.length < 6) {
-              return 'Password must be at least 6 characters';
-            }
-            return null;
-          },
-        ),
-      ],
+        ],
+      ),
     );
   }
 

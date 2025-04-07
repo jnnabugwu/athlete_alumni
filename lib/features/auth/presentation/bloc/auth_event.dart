@@ -103,3 +103,10 @@ class UpdateAthleteProfile extends AuthEvent {
   @override
   List<Object?> get props => [athlete];
 }
+
+class AuthGoogleSignInRequested extends AuthEvent {
+  const AuthGoogleSignInRequested();
+  
+  @override
+  List<Object?> get props => [];
+}
