@@ -7,6 +7,8 @@ import '../bloc/auth_bloc.dart';
 import '../../../../core/config/supabase_config.dart';
 import '../../../../core/utils/web_storage.dart';
 import 'dart:math' as math;
+import '../../../../features/auth/presentation/widgets/cookie_warning_dialog.dart';
+import 'package:flutter/foundation.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -344,8 +346,50 @@ class _LoginPageState extends State<LoginPage> {
           OutlinedButton.icon(
             onPressed: state.status == AuthStatus.loading 
               ? null 
-              : () {
-                  context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+              : () async {
+                  try {
+                    context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+
+                    // For web, the page will be redirected to Google for auth
+                    if (kIsWeb) {
+                      // Show a quick message to let the user know what's happening
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Redirecting to Google login...'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  } catch (e) {
+                    if (e.toString().contains('No ID Token found') || 
+                        e.toString().contains('third-party cookies')) {
+                      // Show the cookie settings dialog
+                      final retry = await showCookieWarningDialog(context);
+                      if (retry) {
+                        // User wants to retry after fixing cookie settings
+                        context.read<AuthBloc>().add(const AuthGoogleSignInRequested());
+                      }
+                    } else if (e.toString().contains('redirect_uri_mismatch') ||
+                              e.toString().contains('invalid request') ||
+                              e.toString().contains('URI mismatch')) {
+                      // Show specific error for redirect URI issues
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Google login is temporarily unavailable due to a configuration issue. Please try regular sign-in instead.'),
+                          backgroundColor: Colors.red,
+                          duration: Duration(seconds: 5),
+                        ),
+                      );
+                    } else {
+                      // Show a generic error message
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error: ${e.toString()}'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  }
                 },
             icon: const Icon(
               Icons.login,

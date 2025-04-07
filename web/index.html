@@ -31,7 +31,21 @@
 
   <!-- Google Sign-In Client ID -->
   <meta name="google-signin-client_id" content="735463188812-jk93h4mn6l9pmphkm9vvggg7q4egpaai.apps.googleusercontent.com">
-  <script src="https://apis.google.com/js/platform.js" async defer></script>
+  
+  <!-- Load Google API scripts properly -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  
+  <script>
+    // Only initialize Google API once
+    let gapiInitialized = false;
+    
+    window.onload = function() {
+      if (!gapiInitialized) {
+        console.log("Initializing Google identity services");
+        gapiInitialized = true;
+      }
+    };
+  </script>
 
   <title>Athlete Alumni</title>
   <link rel="manifest" href="manifest.json">
