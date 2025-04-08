@@ -144,7 +144,7 @@ final appRouter = GoRouter(
         // Check if this is a dev bypass
         final bool isDevBypass = state.extra != null && state.extra is Map && (state.extra as Map).containsKey('devBypass');
         
-        debugPrint("Profile Route: Building with id=$id, isDevBypass=$isDevBypass, extras=${state.extra}");
+        debugPrint("Profile Route: Building with id=$id, extras=${state.extra}");
         
         // If dev bypass, we don't check if it's own profile since there's no real authentication
         final isOwnProfile = isDevBypass ? true : _isOwnProfile(id);
@@ -158,7 +158,6 @@ final appRouter = GoRouter(
           child: ProfileScreen(
             athleteId: id,
             isOwnProfile: isOwnProfile,
-            isDevMode: isDevBypass,
           ),
         );
       },
@@ -436,7 +435,20 @@ Athlete? _getCurrentUser() {
 bool _isOwnProfile(String profileId) {
   final currentUser = _getCurrentUser();
   if (currentUser != null) {
-    return currentUser.id == profileId;
+    // First try a direct ID match
+    if (currentUser.id == profileId) {
+      return true;
+    }
+    
+    // For Google Sign-In users, we also need to check the email
+    // Since the router can't do async operations, we'll check the database in the ProfileScreen
+    debugPrint('Router: Checking profile ID: $profileId vs. current user: ${currentUser.id}');
+    
+    // If the ID is a temp ID and we have authenticated user, consider it own profile
+    if (profileId.startsWith('user-') || profileId == 'unknown-user-id') {
+      debugPrint('Router: Temp ID detected, marking as own profile');
+      return true;
+    }
   }
   return false;
 }

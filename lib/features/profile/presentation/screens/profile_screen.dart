@@ -70,25 +70,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
       ));
       
       debugPrint('ProfileScreen: Initializing new profile for user ID: $userId');
-    } else if (widget.isDevMode) {
-      // Use mock data for development
-      const mockAthlete = Athlete(
-        id: 'mock-id-123',
-        name: 'Dev Test Athlete',
-        email: 'dev@test.com',
-        status: AthleteStatus.former,
-        major: AthleteMajor.computerScience,
-        career: AthleteCareer.softwareEngineer,
-        university: 'Dev University',
-        sport: 'Swimming',
-        achievements: ['NCAA Championship', 'All-American', 'Team Captain'],
-        profileImageUrl: 'https://placehold.co/300x300',
-      );
-      
-      _profileBloc.add(const MockProfileLoadedEvent(mockAthlete));
     } else {
-      // Get real profile data
+      // Always get real profile data, never use mock data
       _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
+      debugPrint('ProfileScreen: Loading real profile data for: ${widget.athleteId}');
     }
   }
   
@@ -230,28 +215,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () {
-                      if (widget.isDevMode) {
-                        // In dev mode, create and emit mock data again
-                          debugPrint("ProfileScreen: Try Again in dev mode - recreating mock athlete");
-                        final mockAthlete = Athlete(
-                          id: 'mock-id-123',
-                          name: 'Dev Test User',
-                          email: 'dev@example.com',
-                          status: AthleteStatus.current,
-                          major: AthleteMajor.computerScience,
-                          career: AthleteCareer.softwareEngineer,
-                          profileImageUrl: 'https://via.placeholder.com/150',
-                          university: 'Dev University',
-                          sport: 'Basketball',
-                          achievements: ['Created with DevBypass', 'Testing Mode'],
-                          graduationYear: DateTime(2023),
-                        );
-                        _profileBloc.emit(ProfileLoaded(mockAthlete));
-                      } else {
-                        // Retry loading profile
-                          debugPrint("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
-                        _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
-                      }
+                      // Retry loading profile
+                        debugPrint("ProfileScreen: Try Again in normal mode - retrying GetProfileEvent");
+                      _profileBloc.add(GetProfileEvent(widget.athleteId ?? ''));
                     },
                     child: const Text('Try Again'),
                   ),

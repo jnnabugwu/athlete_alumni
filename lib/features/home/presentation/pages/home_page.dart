@@ -89,9 +89,13 @@ class HomePage extends StatelessWidget {
                     
                     debugPrint("HomePage button: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
                     
-                    // Always navigate directly to the user's profile with their ID
-                    // The profile screen will handle whether this is a new user or not
-                    context.go('/profile/$profileId');
+                    // Navigate to the profile with isOwnProfile = true
+                    context.go(
+                      '/profile/$profileId',
+                      extra: {
+                        'isOwnProfile': true,
+                      },
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.white,
