@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/models/athlete.dart';
@@ -22,14 +23,53 @@ class ProfilePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Check if this is a dev bypass navigation
-    final bool isDevBypass = GoRouterState.of(context).extra != null &&
-        (GoRouterState.of(context).extra as Map?)?.containsKey('devBypass') == true &&
-        (GoRouterState.of(context).extra as Map)['devBypass'] == true;
+    // Check for route parameters
+    final routerState = GoRouterState.of(context);
+    final Map<String, dynamic>? extra = routerState.extra as Map<String, dynamic>?;
+    
+    // Get current authentication state
+    final authBloc = context.read<AuthBloc>();
+    final authState = authBloc.state;
+    final authUser = authState.athlete;
+    final String? authUserId = authUser?.id;
+    final bool isAuthenticated = authState.status == AuthStatus.authenticated;
+    
+    // Check if we need to override isOwnProfile from the router extra params
+    final bool routeIsOwnProfile = extra != null && 
+        extra.containsKey('isOwnProfile') && 
+        extra['isOwnProfile'] == true;
+    
+    // Check if the profile matches the authenticated user's ID
+    final bool idMatches = isAuthenticated && 
+                         authUserId != null && 
+                         athlete.id == authUserId;
+    
+    // For Google sign-in, also check email match as a fallback
+    final bool emailMatches = isAuthenticated && 
+                            authUser?.email != null && 
+                            athlete.email != null &&
+                            authUser!.email == athlete.email;
+    
+    // Determine if this is the user's own profile through multiple methods
+    final bool effectiveIsOwnProfile = routeIsOwnProfile || isOwnProfile || idMatches || emailMatches;
+    
+    // Log information about the decision
+    if (kDebugMode) {
+      print('🧩 Profile ownership check:');
+      print('  - Route isOwnProfile: $routeIsOwnProfile');
+      print('  - Constructor isOwnProfile: $isOwnProfile');
+      print('  - ID match: $idMatches (${authUserId ?? 'no auth ID'} vs ${athlete.id})');
+      print('  - Email match: $emailMatches (${authUser?.email ?? 'no auth email'} vs ${athlete.email ?? 'no profile email'})');
+      print('  - Decision: ${effectiveIsOwnProfile ? 'IS own profile' : 'NOT own profile'}');
+    }
+    
+    final bool isDevBypass = extra != null &&
+        extra.containsKey('devBypass') &&
+        extra['devBypass'] == true;
     
     return Scaffold(
       appBar: AppBar(
-        title: Text(isOwnProfile ? 'My Profile' : 'Athlete Profile'),
+        title: Text(effectiveIsOwnProfile ? 'My Profile' : 'Athlete Profile'),
         systemOverlayStyle: SystemUiOverlayStyle.light,
         leading: IconButton(
           icon: const Icon(Icons.home),
@@ -37,7 +77,7 @@ class ProfilePage extends StatelessWidget {
           onPressed: () => context.go('/'),
         ),
         actions: [
-          if (isOwnProfile && onEditPressed != null)
+          if (effectiveIsOwnProfile && onEditPressed != null)
             Padding(
               padding: const EdgeInsets.only(right: 8.0),
               child: ElevatedButton.icon(
@@ -45,7 +85,7 @@ class ProfilePage extends StatelessWidget {
                 label: const Text('Edit'),
                 onPressed: onEditPressed,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+                  backgroundColor: Colors.red,
                   foregroundColor: Theme.of(context).colorScheme.onPrimaryContainer,
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -54,18 +94,6 @@ class ProfilePage extends StatelessWidget {
             ),
         ],
       ),
-      floatingActionButton: isOwnProfile ? FloatingActionButton.extended(
-        onPressed: onEditPressed ?? () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Edit functionality not available')),
-          );
-        },
-        icon: const Icon(Icons.edit),
-        label: const Text('Edit Profile'),
-        tooltip: 'Edit your profile information',
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Theme.of(context).colorScheme.onPrimary,
-      ) : null,
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -79,14 +107,11 @@ class ProfilePage extends StatelessWidget {
             // Type-specific information based on athlete status
             TypeSpecificSection(athlete: athlete),
             
-            // Edit profile button if viewing own profile
-            if (isOwnProfile) _buildEditButton(context),
-            
             // Logout button if viewing own profile
-            if (isOwnProfile) _buildLogoutButton(context),
+            if (effectiveIsOwnProfile) _buildLogoutButton(context),
             
-            // Return to home button
-            _buildHomeButton(context),
+            // Navigation buttons row (home and edit)
+            _buildBottomButtons(context, effectiveIsOwnProfile),
             
             // Extra padding at the bottom for better scroll experience
             const SizedBox(height: 24),
@@ -99,32 +124,59 @@ class ProfilePage extends StatelessWidget {
     );
   }
   
-  Widget _buildEditButton(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: ElevatedButton.icon(
-          onPressed: onEditPressed ?? () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Edit functionality not available')),
-            );
-          },
-          icon: const Icon(Icons.edit),
-          label: const Text('Edit Profile'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Theme.of(context).colorScheme.primary,
-            foregroundColor: Theme.of(context).colorScheme.onPrimary,
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24, 
-              vertical: 12,
+  // Bottom buttons row with Home and Edit buttons
+  Widget _buildBottomButtons(BuildContext context, bool isOwn) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (isOwn)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: ElevatedButton.icon(
+                  onPressed: onEditPressed ?? () {
+                    // Navigate to edit profile page
+                    context.push('/profile/edit', extra: {'athlete': athlete});
+                  },
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit Profile'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16, 
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
             ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: isOwn ? 8.0 : 0),
+              child: OutlinedButton.icon(
+                onPressed: () => context.go('/'),
+                icon: const Icon(Icons.home),
+                label: const Text('Home'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16, 
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  side: BorderSide(color: Theme.of(context).colorScheme.primary),
+                ),
+              ),
             ),
-            minimumSize: const Size(200, 50), // Make button wider
-            elevation: 3, // Add some elevation
           ),
-        ),
+        ],
       ),
     );
   }
@@ -192,29 +244,6 @@ class ProfilePage extends StatelessWidget {
     
     // Navigate to login screen
     context.go('/auth/login');
-  }
-
-  Widget _buildHomeButton(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-        child: OutlinedButton.icon(
-          onPressed: () => context.go('/'),
-          icon: const Icon(Icons.home),
-          label: const Text('Return to Home'),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 24, 
-              vertical: 12,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-            side: BorderSide(color: Theme.of(context).colorScheme.primary),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildDevToolsPanel(BuildContext context) {

@@ -88,7 +88,7 @@ Future<void> _initProfile() async {
   ));
   
   // Use cases
-  sl.registerLazySingleton(() => GetProfileUseCase(sl<ProfileRepository>()));
+  sl.registerLazySingleton(() => GetProfileUseCase());
   sl.registerLazySingleton(() => UpdateProfileUseCase(sl<ProfileRepository>()));
   sl.registerLazySingleton(() => UploadProfileImageUseCase(sl<ProfileRepository>()));
   

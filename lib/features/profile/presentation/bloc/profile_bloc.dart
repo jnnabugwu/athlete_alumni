@@ -32,12 +32,52 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   Future<void> _onGetProfile(GetProfileEvent event, Emitter<ProfileState> emit) async {
     emit(ProfileLoading());
     
-    final result = await getProfileUseCase(event.userId);
-    
-    result.fold(
-      (failure) => emit(ProfileError(failure.message)),
-      (athlete) => emit(ProfileLoaded(athlete)),
-    );
+    try {
+      debugPrint('ProfileBloc: Getting profile for user ID: ${event.userId}');
+      final result = await getProfileUseCase(event.userId);
+      
+      result.fold(
+        (failure) {
+          final errorMsg = 'Failed to get profile: ${failure.toString()}';
+          debugPrint('ProfileBloc: $errorMsg');
+          
+          // If we have a temp ID, try to create a new profile
+          if (event.userId.startsWith('user-') || event.userId == 'unknown-user-id') {
+            debugPrint('ProfileBloc: Temporary ID detected, creating new profile');
+            
+            // Get auth data from Supabase
+            final supabaseClient = sl<SupabaseClient>();
+            final currentUser = supabaseClient.auth.currentUser;
+            
+            if (currentUser != null && currentUser.email != null) {
+              debugPrint('ProfileBloc: Creating profile with email: ${currentUser.email}');
+              
+              // Create a basic profile for the new user
+              final newAthlete = Athlete(
+                id: currentUser.id,
+                email: currentUser.email ?? '', // Handle null email (shouldn't happen)
+                name: currentUser.userMetadata?['full_name'] ?? '',
+                status: AthleteStatus.current,
+                major: AthleteMajor.other,
+                career: AthleteCareer.other,
+              );
+              
+              emit(ProfileLoaded(newAthlete));
+              return;
+            }
+          }
+          
+          emit(ProfileError(errorMsg));
+        },
+        (athlete) {
+          debugPrint('ProfileBloc: Successfully loaded profile: ${athlete.email}');
+          emit(ProfileLoaded(athlete));
+        },
+      );
+    } catch (e) {
+      debugPrint('ProfileBloc: Unexpected error in _onGetProfile: $e');
+      emit(ProfileError('An unexpected error occurred: $e'));
+    }
   }
   
   Future<void> _onUpdateProfile(UpdateProfileEvent event, Emitter<ProfileState> emit) async {
