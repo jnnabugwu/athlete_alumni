@@ -8,6 +8,12 @@ class UpdateProfileUseCase {
   UpdateProfileUseCase(this.repository);
   
   ResultFuture<Athlete> call(Athlete athlete) {
+    // Convert the athlete to JSON for Supabase
+    final Map<String, dynamic> athleteJson = athlete.toJson();
+
+    // Let the data sources handle the conversion consistently
+    
+    // Then update the database with the athleteJson
     return repository.updateProfile(athlete);
   }
 } 
