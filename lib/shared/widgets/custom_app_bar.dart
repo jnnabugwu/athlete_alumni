@@ -112,19 +112,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   style: TextStyle(color: AppColors.textLight),
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0, left: 8.0),
-              child: ElevatedButton(
-                onPressed: () => isAuthenticated 
-                  ? context.go(RouteConstants.myProfile)
-                  : context.go(RouteConstants.register),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                ),
-                child: Text(isAuthenticated ? 'My Profile' : 'Get Started'),
-              ),
-            ),
+              SizedBox(width: MediaQuery.sizeOf(context).width * .05,)
           ],
         );
       },

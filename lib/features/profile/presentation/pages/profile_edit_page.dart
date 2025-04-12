@@ -156,8 +156,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         final accessToken = session.accessToken;
         final refreshToken = session.refreshToken;
         
-        debugPrint('🔑 Session exists: ${session != null}');
-        debugPrint('🔑 Access token exists: ${accessToken != null}');
+        debugPrint('🔑 Session exists: $session');
+        debugPrint('🔑 Access token exists: $accessToken');
         debugPrint('🔑 Refresh token exists: ${refreshToken != null}');
         
         // Check if session has user info

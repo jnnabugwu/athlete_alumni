@@ -366,7 +366,7 @@ final appRouter = GoRouter(
         } 
         
         // For authenticated users with no athlete data, generate a unique ID
-        if (authState.status == AuthStatus.authenticated) {
+        if (authState.status == AuthStatus.authenticated && authState.athlete?.id == null) {
           final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
           debugPrint("MyProfile Route: Generating unique ID for user: $uniqueId");
           return '/profile/$uniqueId';

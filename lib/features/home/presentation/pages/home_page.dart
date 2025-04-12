@@ -33,7 +33,6 @@ class HomePage extends StatelessWidget {
   Widget _buildHeroSection(BuildContext context) {
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
-        final bool isAuthenticated = state.status == AuthStatus.authenticated;
         
         return Container(
           height: 500,
