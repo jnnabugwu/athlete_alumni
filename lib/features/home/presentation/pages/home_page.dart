@@ -89,6 +89,10 @@ class HomePage extends StatelessWidget {
                     debugPrint("HomePage button: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
                     
                     // Navigate to the profile with isOwnProfile = true
+                    authState.athlete == null ? 
+                    
+                    context.go(RouteConstants.login) :
+        
                     context.go(
                       '/profile/$profileId',
                       extra: {

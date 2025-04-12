@@ -365,12 +365,12 @@ final appRouter = GoRouter(
           return '/profile/$athleteId';
         } 
         
-        // For authenticated users with no athlete data, generate a unique ID
-        if (authState.status == AuthStatus.authenticated && authState.athlete?.id == null) {
-          final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
-          debugPrint("MyProfile Route: Generating unique ID for user: $uniqueId");
-          return '/profile/$uniqueId';
-        }
+        // // For authenticated users with no athlete data, generate a unique ID
+        // if (authState.status == AuthStatus.authenticated && authState.athlete?.id == null) {
+        //   final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
+        //   debugPrint("MyProfile Route: Generating unique ID for user: $uniqueId");
+        //   return '/profile/$uniqueId';
+        // }
         
         // Auth is still loading, use the builder to show loading screen
         debugPrint("MyProfile Route: Auth state is ${authState.status}, using loading screen");
