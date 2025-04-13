@@ -156,8 +156,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         final accessToken = session.accessToken;
         final refreshToken = session.refreshToken;
         
-        debugPrint('🔑 Session exists: ${session != null}');
-        debugPrint('🔑 Access token exists: ${accessToken != null}');
+        debugPrint('🔑 Session exists: $session');
+        debugPrint('🔑 Access token exists: $accessToken');
         debugPrint('🔑 Refresh token exists: ${refreshToken != null}');
         
         // Check if session has user info
@@ -280,6 +280,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
 
   void _saveChanges() {
     if (_formKey.currentState?.validate() ?? false) {
+      // FORCE VISIBLE LOGGING - will definitely show in console
+      print('');
+      print('🔴🔴🔴 PROFILE EDIT: SAVE INITIATED 🔴🔴🔴');
+      print('🔴🔴🔴 Selected Major: ${_selectedMajor.name} (${_selectedMajor.displayName}) 🔴🔴🔴');
+      print('🔴🔴🔴 Selected Career: ${_selectedCareer.name} (${_selectedCareer.displayName}) 🔴🔴🔴');
+      print('');
+      
       // Make sure we have a valid email from the email field
       final emailToSave = _email.isNotEmpty && _email != 'No email found' 
           ? _email 
@@ -299,15 +306,23 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         profileImageUrl: _profileImageUrl,
       );
       
+      // FORCE VISIBLE LOGGING for the updated athlete
+      print('');
+      print('🔵🔵🔵 UPDATED ATHLETE DETAILS 🔵🔵🔵');
+      print('🔵🔵🔵 Updated Major: ${updatedAthlete.major.name} (${updatedAthlete.major.displayName}) 🔵🔵🔵');
+      print('🔵🔵🔵 Updated Career: ${updatedAthlete.career.name} (${updatedAthlete.career.displayName}) 🔵🔵🔵');
+      print('');
+      
       // Show notification that changes are being saved
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Saving changes... You will be redirected to the home page.'),
-          duration: Duration(seconds: 2),
+        SnackBar(
+          content: Text("Saving changes for athlete: ${updatedAthlete.major}"),
+          duration: const Duration(seconds: 2),
         ),
       );
       
       debugPrint("ProfileEditPage: Saving changes for athlete ID: ${updatedAthlete.id}, email: ${updatedAthlete.email}");
+      debugPrint("Saving changes for athlete: ${updatedAthlete.major}");
       widget.onSave(updatedAthlete);
       
       // Navigation will be handled by the parent EditProfileScreen
@@ -354,6 +369,24 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
           onPressed: _showDiscardDialog,
         ),
         actions: [
+          // DEBUG BUTTON
+          IconButton(
+            icon: const Icon(Icons.bug_report, color: Colors.red),
+            tooltip: 'Debug Log',
+            onPressed: () {
+              // Manual logging that should definitely appear
+              print('');
+              print('🐞🐞🐞 MANUAL DEBUG - CURRENT ENUM VALUES 🐞🐞🐞');
+              print('🐞🐞🐞 Major: ${_selectedMajor.name} (${_selectedMajor.displayName}) 🐞🐞🐞');
+              print('🐞🐞🐞 Career: ${_selectedCareer.name} (${_selectedCareer.displayName}) 🐞🐞🐞');
+              print('');
+              
+              // Show a snackbar to confirm the log was triggered
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Debug values logged to console')),
+              );
+            },
+          ),
           TextButton(
             onPressed: _hasChanges ? _saveChanges : null,
             child: const Text('SAVE', style: TextStyle(color: Colors.white)),
@@ -619,6 +652,36 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Debug section - REMOVE IN PRODUCTION
+        Container(
+          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade100,
+            border: Border.all(color: Colors.amber.shade700),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'DEBUG INFO',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber.shade900,
+                ),
+              ),
+              Text(
+                'Major: ${_selectedMajor.name} (${_selectedMajor.displayName})',
+                style: TextStyle(
+                  color: Colors.amber.shade900,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
+        
         Text(
           'Academic Information',
           style: Theme.of(context).textTheme.titleMedium,
@@ -678,6 +741,36 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Debug section - REMOVE IN PRODUCTION
+        Container(
+          padding: const EdgeInsets.all(8),
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: Colors.amber.shade100,
+            border: Border.all(color: Colors.amber.shade700),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'DEBUG INFO',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: Colors.amber.shade900,
+                ),
+              ),
+              Text(
+                'Career: ${_selectedCareer.name} (${_selectedCareer.displayName})',
+                style: TextStyle(
+                  color: Colors.amber.shade900,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ],
+          ),
+        ),
+      
         Text(
           'Career Information',
           style: Theme.of(context).textTheme.titleMedium,

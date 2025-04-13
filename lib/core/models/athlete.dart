@@ -1,4 +1,6 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
+import '../utils/log_utils.dart';
 part 'athlete_enums.dart';
 
 class Athlete {
@@ -107,10 +109,34 @@ class Athlete {
   static AthleteMajor _parseMajor(Map<String, dynamic> json) {
     final majorValue = json['major'];
     
-    if (majorValue == null) return AthleteMajor.other;
+    // FORCE VISIBLE LOGGING
+    print('');
+    print('🔍🔍🔍 PARSING MAJOR VALUE: "$majorValue" 🔍🔍🔍');
+    
+    if (majorValue == null) {
+      print('🔍🔍🔍 Major is NULL, defaulting to OTHER 🔍🔍🔍');
+      return AthleteMajor.other;
+    }
     
     if (majorValue is String) {
-      return AthleteMajor.fromString(majorValue);
+      // First try matching by exact enum name (case insensitive)
+      for (final major in AthleteMajor.values) {
+        if (major.name.toLowerCase() == majorValue.toLowerCase()) {
+          print('🔍🔍🔍 Found major by name match: ${major.name} 🔍🔍🔍');
+          return major;
+        }
+      }
+      
+      // Then try matching by display name (case insensitive)
+      for (final major in AthleteMajor.values) {
+        if (major.displayName.toLowerCase() == majorValue.toLowerCase()) {
+          print('🔍🔍🔍 Found major by display name match: ${major.name} 🔍🔍🔍');
+          return major;
+        }
+      }
+      
+      print('🔍🔍🔍 NO MATCH FOUND for major: "$majorValue", defaulting to OTHER 🔍🔍🔍');
+      print('');
     }
     
     return AthleteMajor.other;
@@ -120,10 +146,34 @@ class Athlete {
   static AthleteCareer _parseCareer(Map<String, dynamic> json) {
     final careerValue = json['career'];
     
-    if (careerValue == null) return AthleteCareer.other;
+    // FORCE VISIBLE LOGGING
+    print('');
+    print('🔎🔎🔎 PARSING CAREER VALUE: "$careerValue" 🔎🔎🔎');
+    
+    if (careerValue == null) {
+      print('🔎🔎🔎 Career is NULL, defaulting to OTHER 🔎🔎🔎');
+      return AthleteCareer.other;
+    }
     
     if (careerValue is String) {
-      return AthleteCareer.fromString(careerValue);
+      // First try matching by exact enum name (case insensitive)
+      for (final career in AthleteCareer.values) {
+        if (career.name.toLowerCase() == careerValue.toLowerCase()) {
+          print('🔎🔎🔎 Found career by name match: ${career.name} 🔎🔎🔎');
+          return career;
+        }
+      }
+      
+      // Then try matching by display name (case insensitive)
+      for (final career in AthleteCareer.values) {
+        if (career.displayName.toLowerCase() == careerValue.toLowerCase()) {
+          print('🔎🔎🔎 Found career by display name match: ${career.name} 🔎🔎🔎');
+          return career;
+        }
+      }
+      
+      print('🔎🔎🔎 NO MATCH FOUND for career: "$careerValue", defaulting to OTHER 🔎🔎🔎');
+      print('');
     }
     
     return AthleteCareer.other;
@@ -174,15 +224,20 @@ class Athlete {
 
   // To JSON method
   Map<String, dynamic> toJson() {
+    // Use our super-visible logging utility
+    forceLog('Serializing Athlete to JSON', tag: 'ATHLETE_TO_JSON');
+    forceLog('Major: ${major.name} (${major.displayName})', tag: 'ATHLETE_TO_JSON');
+    forceLog('Career: ${career.name} (${career.displayName})', tag: 'ATHLETE_TO_JSON');
+    
     return {
       'id': id,
       'name': name,
       'email': email,
       'username': username,
       'status': status.name,
-      // Store major and career as display names for better readability
-      'major': major.displayName,
-      'career': career.displayName,
+      // IMPORTANT: Store major and career as enum names for consistent serialization
+      'major': major.name,
+      'career': career.name,
       'profileImageUrl': profileImageUrl,
       'university': university,
       'sport': sport,

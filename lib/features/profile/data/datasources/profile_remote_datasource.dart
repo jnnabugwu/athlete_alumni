@@ -236,8 +236,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       'email': athleteData['email'],
       'username': username, // Add username from auth if available
       'athlete_status': athleteData['status']?.toString()?.split('.')?.last,
-      'major': athleteData['major']?.toString()?.split('.')?.last,
-      'career': athleteData['career']?.toString()?.split('.')?.last,
+      'major': athleteData['major'],
+      'career': athleteData['career'],
       'college': athleteData['university'],
       'sport': athleteData['sport'],
     };
@@ -248,8 +248,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     debugPrint('_formatDataForSupabase: email = ${athleteData['email']}');
     debugPrint('_formatDataForSupabase: username = $username');
     debugPrint('_formatDataForSupabase: status -> athlete_status = ${athleteData['status']?.toString()?.split('.')?.last}');
-    debugPrint('_formatDataForSupabase: major = ${athleteData['major']?.toString()?.split('.')?.last}');
-    debugPrint('_formatDataForSupabase: career = ${athleteData['career']?.toString()?.split('.')?.last}');
+    debugPrint('_formatDataForSupabase: major = ${athleteData['major']}');
+    debugPrint('_formatDataForSupabase: career = ${athleteData['career']}');
     debugPrint('_formatDataForSupabase: university -> college = ${athleteData['university']}');
     debugPrint('_formatDataForSupabase: sport = ${athleteData['sport']}');
     

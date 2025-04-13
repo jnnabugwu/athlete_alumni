@@ -42,7 +42,23 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 offset: const Offset(0, 40),
                 onSelected: (value) {
                   if (value == 'profile') {
-                    context.go(RouteConstants.myProfile);
+                    // Get the current auth state
+                    final authState = context.read<AuthBloc>().state;
+                    
+                    // Check for athlete ID first, fall back to generating a unique ID if needed
+                    final String profileId = authState.athlete?.id.isNotEmpty == true 
+                        ? authState.athlete!.id
+                        : 'user-${DateTime.now().millisecondsSinceEpoch}';
+                    
+                    debugPrint("AppBar menu: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
+                    
+                    // Navigate to the profile with isOwnProfile = true
+                    context.go(
+                      '/profile/$profileId',
+                      extra: {
+                        'isOwnProfile': true,
+                      },
+                    );
                   } else if (value == 'settings') {
                     // Navigate to settings page when implemented
                   } else if (value == 'logout') {
@@ -112,19 +128,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                   style: TextStyle(color: AppColors.textLight),
                 ),
               ),
-            Padding(
-              padding: const EdgeInsets.only(right: 16.0, left: 8.0),
-              child: ElevatedButton(
-                onPressed: () => isAuthenticated 
-                  ? context.go(RouteConstants.myProfile)
-                  : context.go(RouteConstants.register),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: AppColors.primary,
-                ),
-                child: Text(isAuthenticated ? 'My Profile' : 'Get Started'),
-              ),
-            ),
+              SizedBox(width: MediaQuery.sizeOf(context).width * .05,)
           ],
         );
       },

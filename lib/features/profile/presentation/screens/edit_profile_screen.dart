@@ -32,9 +32,9 @@ class EditProfileScreen extends StatelessWidget {
           
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Profile updated successfully. Changes may take a moment to appear.'),
-              duration: Duration(seconds: 3),
+            SnackBar(
+              content: Text('Profile updated successfully. ${athlete.career}'),
+              duration: const Duration(seconds: 3),
             ),
           );
           
