@@ -8,8 +8,8 @@ import '../../../../core/router/route_constants.dart';
 import '../bloc/edit_profile_bloc.dart';
 import '../bloc/profile_bloc.dart';
 import '../pages/profile_edit_page.dart';
+import '../bloc/upload_image_bloc.dart';
 
-//TODO: understand this screen decrepancy later
 class EditProfileScreen extends StatelessWidget {
   final Athlete athlete;
   
@@ -67,12 +67,15 @@ class EditProfileScreen extends StatelessWidget {
           // If loaded state, use that data, otherwise use the initial athlete
           final currentAthlete = state is EditProfileLoaded ? state.athlete : athlete;
           
-          return ProfileEditPage(
-            athlete: currentAthlete,
-            onSave: (updatedAthlete) {
-              // Dispatch save event to bloc
-              context.read<EditProfileBloc>().add(SaveProfileEvent(updatedAthlete));
-            },
+          return BlocProvider<UploadImageBloc>(
+            create: (context) => sl<UploadImageBloc>(),
+            child: ProfileEditPage(
+              athlete: currentAthlete,
+              onSave: (updatedAthlete) {
+                // Dispatch save event to bloc
+                context.read<EditProfileBloc>().add(SaveProfileEvent(updatedAthlete));
+              },
+            ),
           );
         }
         

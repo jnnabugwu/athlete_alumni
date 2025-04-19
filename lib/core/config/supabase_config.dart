@@ -13,7 +13,7 @@ class SupabaseConfig {
     } catch (e) {
       debugPrint('❌ Error getting Supabase URL: $e');
       // Return fallback directly here as a last resort
-      return 'https://kszcjniwbqxyndpsajhr.supabase.co/';
+      return 'https://kszcjniwbqxyndpsajhr.supabase.co';
     }
   }
 
