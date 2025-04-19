@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
+import 'dart:async';
 import '../../../../core/models/athlete.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/di/injection.dart';
+import '../bloc/upload_image_bloc.dart';
+import '../../data/services/image_picker_service.dart';
 
 class ProfileEditPage extends StatefulWidget {
   final Athlete athlete;
@@ -32,6 +36,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   File? _profileImageFile;
   List<String> _achievements = [];
   String _email = '';
+  StreamSubscription? _uploadSubscription;
+  
+  // Image picker service
+  final ImagePickerService _imagePickerService = sl<ImagePickerService>();
+  
+  // Upload bloc
+  late UploadImageBloc _uploadImageBloc;
 
   final _formKey = GlobalKey<FormState>();
   bool _hasChanges = false;
@@ -43,6 +54,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     // Debug info for initialization
     debugPrint('🔍 ProfileEditPage init - Athlete ID: ${widget.athlete.id}');
     debugPrint('🔍 ProfileEditPage init - Athlete email: "${widget.athlete.email}"');
+    
+    // Initialize the upload image bloc
+    _uploadImageBloc = sl<UploadImageBloc>();
     
     _fullNameController = TextEditingController(text: widget.athlete.name ?? '');
     _usernameController = TextEditingController(text: widget.athlete.username ?? '');
@@ -207,20 +221,78 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     _universityController.dispose();
     _sportController.dispose();
     _emailController.dispose();
+    _uploadImageBloc.close();
     super.dispose();
   }
 
   Future<void> _pickImage() async {
-    setState(() {
-      _profileImageUrl = null;
-      _profileImageFile = null;
-      _hasChanges = true;
-    });
+  try {
+    // Show the image source dialog
+    final ImageResult? result = await _imagePickerService.showImageSourceDialog(context);
     
+    if (result == null) {
+      debugPrint('Image picking cancelled');
+      return;
+    }
+    
+    debugPrint('Image picked: ${result.fileName}');
+    
+    // Get the upload image bloc from context
+    final uploadBloc = BlocProvider.of<UploadImageBloc>(context);
+    
+    // Cancel any existing subscription
+    if(_uploadSubscription != null){
+      _uploadSubscription?.cancel();
+      _uploadSubscription = null;
+    }
+    
+    // Upload the image using the bloc
+    uploadBloc.add(UploadProfileImageEvent(
+      athleteId: widget.athlete.id,
+      imageBytes: result.imageBytes,
+      fileName: result.fileName,
+    ));
+    
+    // Create a new subscription to handle the completion
+    _uploadSubscription = uploadBloc.stream.listen((state) {
+      if (state is UploadImageSuccess) {
+        print('Image uploaded: ${state.imageUrl}');
+        setState(() {
+          _profileImageUrl = state.imageUrl;
+          _hasChanges = true;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile image updated successfully')),
+        );
+        
+        // Reset the state to initial after success
+        uploadBloc.add(ResetUploadStateEvent());
+        
+        // Cancel the subscription
+        _uploadSubscription?.cancel();
+        _uploadSubscription = null;
+      } else if (state is UploadImageFailure) {
+        debugPrint('Image upload failed: ${state.message}');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to upload image: ${state.message}')),
+        );
+        
+        // Reset the state to initial after failure
+        uploadBloc.add(ResetUploadStateEvent());
+        
+        // Cancel the subscription
+        _uploadSubscription?.cancel();
+        _uploadSubscription = null;
+      }
+    });
+  } catch (e) {
+    debugPrint('Error picking/uploading image: $e');
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Image picker placeholder - would integrate with camera/gallery')),
+      SnackBar(content: Text('Error: $e')),
     );
   }
+}
 
   void _addAchievement() {
     setState(() {
@@ -281,11 +353,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   void _saveChanges() {
     if (_formKey.currentState?.validate() ?? false) {
       // FORCE VISIBLE LOGGING - will definitely show in console
-      print('');
-      print('🔴🔴🔴 PROFILE EDIT: SAVE INITIATED 🔴🔴🔴');
-      print('🔴🔴🔴 Selected Major: ${_selectedMajor.name} (${_selectedMajor.displayName}) 🔴🔴🔴');
-      print('🔴🔴🔴 Selected Career: ${_selectedCareer.name} (${_selectedCareer.displayName}) 🔴🔴🔴');
-      print('');
       
       // Make sure we have a valid email from the email field
       final emailToSave = _email.isNotEmpty && _email != 'No email found' 
@@ -306,23 +373,13 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         profileImageUrl: _profileImageUrl,
       );
       
-      // FORCE VISIBLE LOGGING for the updated athlete
-      print('');
-      print('🔵🔵🔵 UPDATED ATHLETE DETAILS 🔵🔵🔵');
-      print('🔵🔵🔵 Updated Major: ${updatedAthlete.major.name} (${updatedAthlete.major.displayName}) 🔵🔵🔵');
-      print('🔵🔵🔵 Updated Career: ${updatedAthlete.career.name} (${updatedAthlete.career.displayName}) 🔵🔵🔵');
-      print('');
-      
       // Show notification that changes are being saved
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text("Saving changes for athlete: ${updatedAthlete.major}"),
+          content: Text("Saving changes for athlete: ${updatedAthlete.name}"),
           duration: const Duration(seconds: 2),
         ),
       );
-      
-      debugPrint("ProfileEditPage: Saving changes for athlete ID: ${updatedAthlete.id}, email: ${updatedAthlete.email}");
-      debugPrint("Saving changes for athlete: ${updatedAthlete.major}");
       widget.onSave(updatedAthlete);
       
       // Navigation will be handled by the parent EditProfileScreen
@@ -363,35 +420,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Edit Profile'),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          tooltip: 'Back to Profile',
-          onPressed: _showDiscardDialog,
-        ),
-        actions: [
-          // DEBUG BUTTON
-          IconButton(
-            icon: const Icon(Icons.bug_report, color: Colors.red),
-            tooltip: 'Debug Log',
-            onPressed: () {
-              // Manual logging that should definitely appear
-              print('');
-              print('🐞🐞🐞 MANUAL DEBUG - CURRENT ENUM VALUES 🐞🐞🐞');
-              print('🐞🐞🐞 Major: ${_selectedMajor.name} (${_selectedMajor.displayName}) 🐞🐞🐞');
-              print('🐞🐞🐞 Career: ${_selectedCareer.name} (${_selectedCareer.displayName}) 🐞🐞🐞');
-              print('');
-              
-              // Show a snackbar to confirm the log was triggered
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Debug values logged to console')),
-              );
-            },
-          ),
-          TextButton(
-            onPressed: _hasChanges ? _saveChanges : null,
-            child: const Text('SAVE', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
       body: Form(
         key: _formKey,
@@ -465,42 +493,57 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Center(
       child: Column(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  shape: BoxShape.circle,
-                  image: _profileImageUrl != null
-                      ? DecorationImage(
-                          image: NetworkImage(_profileImageUrl!),
-                          fit: BoxFit.cover,
-                        )
-                      : null,
-                ),
-                child: _profileImageUrl == null
-                    ? Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Colors.grey.shade400,
-                      )
-                    : null,
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: CircleAvatar(
-                  backgroundColor: Theme.of(context).primaryColor,
-                  radius: 18,
-                  child: IconButton(
-                    icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                    onPressed: _pickImage,
+          BlocBuilder<UploadImageBloc, UploadImageState>(
+            builder: (context, state) {
+              // Get the upload image bloc from context instead of using the instance variable
+              _uploadImageBloc = BlocProvider.of<UploadImageBloc>(context);
+              
+              return Stack(
+                children: [
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      shape: BoxShape.circle,
+                      image: _profileImageUrl != null
+                          ? DecorationImage(
+                              image: NetworkImage(_profileImageUrl!),
+                              fit: BoxFit.cover,
+                            )
+                          : null,
+                    ),
+                    child: state is UploadImageLoading
+                        ? Center(
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Theme.of(context).primaryColor,
+                              ),
+                            ),
+                          )
+                        : _profileImageUrl == null
+                            ? Icon(
+                                Icons.person,
+                                size: 60,
+                                color: Colors.grey.shade400,
+                              )
+                            : null,
                   ),
-                ),
-              ),
-            ],
+                  Positioned(
+                    bottom: 0,
+                    right: 0,
+                    child: CircleAvatar(
+                      backgroundColor: Theme.of(context).primaryColor,
+                      radius: 18,
+                      child: IconButton(
+                        icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
+                        onPressed: state is UploadImageLoading ? null : _pickImage,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           Text(
@@ -652,36 +695,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Debug section - REMOVE IN PRODUCTION
-        Container(
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.amber.shade100,
-            border: Border.all(color: Colors.amber.shade700),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'DEBUG INFO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber.shade900,
-                ),
-              ),
-              Text(
-                'Major: ${_selectedMajor.name} (${_selectedMajor.displayName})',
-                style: TextStyle(
-                  color: Colors.amber.shade900,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
-          ),
-        ),
-        
         Text(
           'Academic Information',
           style: Theme.of(context).textTheme.titleMedium,

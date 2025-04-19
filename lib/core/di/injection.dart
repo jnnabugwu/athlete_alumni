@@ -14,6 +14,8 @@ import '../../features/profile/domain/usecases/update_profile_usecase.dart';
 import '../../features/profile/domain/usecases/upload_profile_image_usecase.dart';
 import '../../features/profile/presentation/bloc/profile_bloc.dart';
 import '../../features/profile/presentation/bloc/edit_profile_bloc.dart';
+import '../../features/profile/presentation/bloc/upload_image_bloc.dart';
+import '../../features/profile/data/services/image_picker_service.dart';
 import '../network/network_info.dart';
 
 // Feature - Athletes
@@ -86,6 +88,13 @@ Future<void> _initProfile() async {
   sl.registerFactory(() => EditProfileBloc(
     updateProfileUseCase: sl<UpdateProfileUseCase>(),
   ));
+  
+  sl.registerFactory(() => UploadImageBloc(
+    uploadProfileImageUseCase: sl<UploadProfileImageUseCase>(),
+  ));
+  
+  // Services
+  sl.registerLazySingleton(() => ImagePickerService());
   
   // Use cases
   sl.registerLazySingleton(() => GetProfileUseCase());

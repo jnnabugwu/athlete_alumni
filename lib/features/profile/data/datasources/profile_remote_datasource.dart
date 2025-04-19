@@ -213,7 +213,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       debugPrint('ProfileRemoteDataSource: Error updating profile: $e');
       throw ServerException(message: e.toString(), statusCode: 500);
     }
-  }
+  } 
 
   /// Format data for Supabase compatibility
   Map<String, dynamic> _formatDataForSupabase(Map<String, dynamic> athleteData) {
@@ -241,17 +241,6 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       'college': athleteData['university'],
       'sport': athleteData['sport'],
     };
-    
-    // Log field transformations
-    debugPrint('_formatDataForSupabase: id = ${athleteData['id']}');
-    debugPrint('_formatDataForSupabase: name -> full_name = ${athleteData['name']}');
-    debugPrint('_formatDataForSupabase: email = ${athleteData['email']}');
-    debugPrint('_formatDataForSupabase: username = $username');
-    debugPrint('_formatDataForSupabase: status -> athlete_status = ${athleteData['status']?.toString()?.split('.')?.last}');
-    debugPrint('_formatDataForSupabase: major = ${athleteData['major']}');
-    debugPrint('_formatDataForSupabase: career = ${athleteData['career']}');
-    debugPrint('_formatDataForSupabase: university -> college = ${athleteData['university']}');
-    debugPrint('_formatDataForSupabase: sport = ${athleteData['sport']}');
     
     // If no username, use a default based on auth ID to avoid database errors
     if (username == null) {
@@ -328,25 +317,35 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         try {
           debugPrint('ProfileRemoteDataSource: Uploading profile image for ID: $actualAthleteId');
           
-          // Format the file path: profiles/user-id/filename
-          final filePath = 'profiles/$actualAthleteId/$fileName';
+          // Format the file path without leading slash
+          final filePath = '${actualAthleteId.trim()}/${fileName.trim()}'.replaceAll('//', '/');
+
+          debugPrint(filePath);
           
           // Upload the image to Supabase Storage
-          final response = await supabaseClient
+          
+          await supabaseClient
               .storage
-              .from('athlete_images') // Bucket name
+              .from('athlete-images') // Bucket name
               .uploadBinary(filePath, imageBytes, fileOptions: const FileOptions(
                 cacheControl: '3600',
                 upsert: true
               ));
           
-          // Get the public URL for the uploaded image
-          final imageUrl = supabaseClient
+          // Get the signed URL for the uploaded image
+          final String imageUrl = await supabaseClient
               .storage
-              .from('athlete_images')
-              .getPublicUrl(filePath);
+              .from('athlete-images')
+              .createSignedUrl(filePath,60);
+              // Ensure no double slashes in the path part
           
-          debugPrint('ProfileRemoteDataSource: Image uploaded: $imageUrl');
+          // Add https:// back to the start if it was removed
+          // final String finalImageUrl = imageUrl.startsWith('https:/') 
+          //     ? imageUrl.replaceFirst('https:/', 'https://')
+          //     : imageUrl;
+          
+          debugPrint('ProfileRemoteDataSource: Image uploaded. Raw URL: $imageUrl');
+          // debugPrint('ProfileRemoteDataSource: Final URL: $finalImageUrl');
           
           // Update the athlete's profile with the new image URL
           try {
