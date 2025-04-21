@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:athlete_alumni/features/athletes/presentation/bloc/athlete_bloc.dart';
 import 'package:athlete_alumni/features/athletes/presentation/bloc/filter_athletes_bloc.dart';
+import 'package:athlete_alumni/features/profile/domain/usecases/get_profile_image_url_usecase.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -41,9 +42,6 @@ final appRouter = GoRouter(
   
   // Redirect based on authentication state
   redirect: (context, state) {
-    debugPrint("Router.redirect called for path: ${state.uri.path}");
-    debugPrint("Router.redirect extra: ${state.extra}");
-    
     // Development bypass
     final bool isDevBypass = state.extra != null && 
                              state.extra is Map && 
@@ -51,7 +49,6 @@ final appRouter = GoRouter(
                              (state.extra as Map)['devBypass'] == true;
     
     if (isDevBypass) {
-      debugPrint("Router: Dev bypass detected, skipping auth checks");
       return null;
     }
 
@@ -59,16 +56,13 @@ final appRouter = GoRouter(
     final authBloc = sl<AuthBloc>();
     final authState = authBloc.state;
     final authStatus = authState.status;
-    debugPrint("Router: Current auth status = $authStatus");
     
     // Don't redirect while we're waiting for the auth state
     if (authStatus == AuthStatus.initial || authStatus == AuthStatus.loading) {
-      debugPrint("Router: Auth state is $authStatus, waiting for final state");
       return null;
     }
     
     final isLoggedIn = authStatus == AuthStatus.authenticated;
-    debugPrint("Router: isLoggedIn = $isLoggedIn");
     
     // Check if the user is going to public routes that don't require authentication
     final isPublicRoute = state.uri.path == RouteConstants.login || 
@@ -76,21 +70,16 @@ final appRouter = GoRouter(
                           state.uri.path == RouteConstants.passwordReset ||
                           state.uri.path.startsWith('/password-reset/');
     
-    debugPrint("Router: isPublicRoute = $isPublicRoute for ${state.uri.path}");
-    
     // If not logged in and not going to a public route, redirect to login
     if (!isLoggedIn && !isPublicRoute) {
-      debugPrint("Router: Not logged in and not going to a public route, redirecting to login");
       return RouteConstants.login;
     }
     
     // If logged in and going to login/register, redirect to home
     if (isLoggedIn && (state.uri.path == RouteConstants.login || state.uri.path == RouteConstants.register)) {
-      debugPrint("Router: Logged in and going to login/register, redirecting to home");
       return RouteConstants.home;
     }
     
-    debugPrint("Router: No redirect needed for ${state.uri.path}");
     return null;
   },
   
@@ -144,8 +133,6 @@ final appRouter = GoRouter(
         // Check if this is a dev bypass
         final bool isDevBypass = state.extra != null && state.extra is Map && (state.extra as Map).containsKey('devBypass');
         
-        debugPrint("Profile Route: Building with id=$id, extras=${state.extra}");
-        
         // If dev bypass, we don't check if it's own profile since there's no real authentication
         final isOwnProfile = isDevBypass ? true : _isOwnProfile(id);
         
@@ -154,6 +141,7 @@ final appRouter = GoRouter(
             getProfileUseCase: sl<GetProfileUseCase>(),
             updateProfileUseCase: sl<UpdateProfileUseCase>(),
             uploadProfileImageUseCase: sl<UploadProfileImageUseCase>(),
+            getProfileImageUrlUseCase: sl<GetProfileImageUrlUseCase>(),
           ),
           child: ProfileScreen(
             athleteId: id,
@@ -168,7 +156,6 @@ final appRouter = GoRouter(
           name: 'editProfile',
           builder: (context, state) {
             final id = state.pathParameters['id'] ?? '';
-            debugPrint("Edit Profile Route: Building with id=$id");
             
             // Check if this is a temporary user ID
             final bool isTemporaryId = id.startsWith('user-') || 
@@ -184,6 +171,7 @@ final appRouter = GoRouter(
                       getProfileUseCase: sl<GetProfileUseCase>(),
                       updateProfileUseCase: sl<UpdateProfileUseCase>(),
                       uploadProfileImageUseCase: sl<UploadProfileImageUseCase>(),
+                      getProfileImageUrlUseCase: sl<GetProfileImageUrlUseCase>(),
                     );
                     
                     if (isTemporaryId) {
@@ -212,7 +200,6 @@ final appRouter = GoRouter(
                         if (currentUser != null) {
                           final userData = currentUser.userMetadata;
                           if (userData != null) {
-                            debugPrint("Edit Profile Route: Found user metadata: $userData");
                             fullName = userData['full_name'] as String?;
                             username = userData['username'] as String?;
                             college = userData['college'] as String?;
@@ -227,7 +214,6 @@ final appRouter = GoRouter(
                           if (username == null) {
                             // We can't use await here, so we'll just use any data we already have
                             // and let the ProfileBloc handle fetching additional data
-                            debugPrint("Edit Profile Route: Could not get username from metadata, will attempt fetch in ProfileBloc");
                           }
                         }
                       }
@@ -235,10 +221,8 @@ final appRouter = GoRouter(
                       // Provide defaults for username if not found to avoid database errors
                       if (username == null) {
                         username = "user_${DateTime.now().millisecondsSinceEpoch.toString().substring(0, 8)}";
-                        debugPrint("Edit Profile Route: Generated default username: $username");
                       }
                           
-                      debugPrint("Edit Profile Route: Initializing new profile for temporary ID: $id");
                       profileBloc.add(InitializeNewProfileEvent(
                         authUserId: id,
                         email: email,
@@ -249,7 +233,6 @@ final appRouter = GoRouter(
                       ));
                     } else {
                       // For regular IDs, load the profile data
-                      debugPrint("Edit Profile Route: Loading profile data for ID: $id");
                       profileBloc.add(GetProfileEvent(id));
                     }
                     
@@ -281,7 +264,6 @@ final appRouter = GoRouter(
                       
                       // Handle error state - initialize with default data for new users
                       if (profileState is ProfileError && isTemporaryId) {
-                        debugPrint("Edit Profile Route: Creating default athlete data for temporary ID: $id");
                         
                         // Create minimal athlete data for the form
                         final authBloc = sl<AuthBloc>();
@@ -334,8 +316,6 @@ final appRouter = GoRouter(
     GoRoute(
       path: RouteConstants.myProfile,
       redirect: (context, state) {
-        debugPrint("MyProfile.redirect called with extra: ${state.extra}");
-        
         // Check if this is a dev bypass
         final bool isDevBypass = state.extra != null && 
                                  state.extra is Map && 
@@ -344,7 +324,6 @@ final appRouter = GoRouter(
         
         // For dev bypass, use a mock ID
         if (isDevBypass) {
-          debugPrint("MyProfile Route: Dev bypass detected, using mock ID");
           return '/profile/mock-id-123';
         }
         
@@ -354,31 +333,20 @@ final appRouter = GoRouter(
         
         // We need to handle unauthenticated users
         if (authState.status == AuthStatus.unauthenticated) {
-          debugPrint("MyProfile Route: User is not authenticated, redirecting to login");
           return RouteConstants.login;
         }
         
         // If we have athlete data with an ID, use that ID
         if (authState.athlete != null && authState.athlete!.id.isNotEmpty) {
           final athleteId = authState.athlete!.id;
-          debugPrint("MyProfile Route: User has athlete ID: $athleteId, redirecting");
           return '/profile/$athleteId';
         } 
         
-        // // For authenticated users with no athlete data, generate a unique ID
-        // if (authState.status == AuthStatus.authenticated && authState.athlete?.id == null) {
-        //   final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
-        //   debugPrint("MyProfile Route: Generating unique ID for user: $uniqueId");
-        //   return '/profile/$uniqueId';
-        // }
-        
         // Auth is still loading, use the builder to show loading screen
-        debugPrint("MyProfile Route: Auth state is ${authState.status}, using loading screen");
         return state.uri.path; // Return current path to force using the builder
       },
       // Add a builder as a fallback to prevent it from being a redirect-only route
       builder: (context, state) {
-        debugPrint("MyProfile Route: Builder called - this should only happen when loading auth state");
         // When auth is loading, show the ProfileLoadingScreen which will auto-navigate when auth is ready
         return const ProfileLoadingScreen();
       },
@@ -442,11 +410,9 @@ bool _isOwnProfile(String profileId) {
     
     // For Google Sign-In users, we also need to check the email
     // Since the router can't do async operations, we'll check the database in the ProfileScreen
-    debugPrint('Router: Checking profile ID: $profileId vs. current user: ${currentUser.id}');
     
     // If the ID is a temp ID and we have authenticated user, consider it own profile
     if (profileId.startsWith('user-') || profileId == 'unknown-user-id') {
-      debugPrint('Router: Temp ID detected, marking as own profile');
       return true;
     }
   }
@@ -512,14 +478,11 @@ class _ProfileLoadingScreenState extends State<ProfileLoadingScreen> {
     _navigationTimer = Timer(const Duration(milliseconds: 300), () {
       if (!mounted) return;
       
-      debugPrint("ProfileLoadingScreen: Direct navigation attempt");
-      
       // Generate a profile ID - either use existing athlete ID or create a new unique one
       final String profileId = authState.athlete?.id.isNotEmpty == true
           ? authState.athlete!.id
           : 'user-${DateTime.now().millisecondsSinceEpoch}';
       
-      debugPrint("ProfileLoadingScreen: Using profile ID: $profileId");
       context.go('/profile/$profileId');
     });
   }
@@ -556,7 +519,6 @@ class _ProfileLoadingScreenState extends State<ProfileLoadingScreen> {
                 
                 // Generate a unique ID for the user
                 final uniqueId = 'user-${DateTime.now().millisecondsSinceEpoch}';
-                debugPrint("Retry button: Using generated profile ID: $uniqueId");
                 
                 // Navigate directly to profile with the unique ID
                 context.go('/profile/$uniqueId');

@@ -29,6 +29,12 @@ abstract class ProfileRemoteDataSource {
   /// 
   /// Returns null if not authenticated
   String? getCurrentUserId();
+
+  /// Gets the profile image URL for an athlete
+  /// 
+  /// Returns null if no image exists
+  /// Throws a [ServerException] for all error codes
+  Future<String?> getProfileImageUrl(String athleteId);
 }
 
 class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
@@ -283,7 +289,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
   @override
   Future<String> uploadProfileImage(String athleteId, Uint8List imageBytes, String fileName) async {
     try {
-      final bool useMockData = _useMockData; // Use the class constant
+      final bool useMockData = _useMockData;
       
       // Handle temporary IDs by getting the actual user ID
       final bool isTemporaryId = athleteId.startsWith('user-') || 
@@ -312,60 +318,43 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
         }
             
         return imageUrl;
-      } else {
-        // Production mode - use Supabase Storage
-        try {
-          debugPrint('ProfileRemoteDataSource: Uploading profile image for ID: $actualAthleteId');
-          
-          // Format the file path without leading slash
-          final filePath = '${actualAthleteId.trim()}/${fileName.trim()}'.replaceAll('//', '/');
-
-          debugPrint(filePath);
-          
-          // Upload the image to Supabase Storage
-          
-          await supabaseClient
-              .storage
-              .from('athlete-images') // Bucket name
-              .uploadBinary(filePath, imageBytes, fileOptions: const FileOptions(
-                cacheControl: '3600',
-                upsert: true
-              ));
-          
-          // Get the signed URL for the uploaded image
-          final String imageUrl = await supabaseClient
-              .storage
-              .from('athlete-images')
-              .createSignedUrl(filePath,60);
-              // Ensure no double slashes in the path part
-          
-          // Add https:// back to the start if it was removed
-          // final String finalImageUrl = imageUrl.startsWith('https:/') 
-          //     ? imageUrl.replaceFirst('https:/', 'https://')
-          //     : imageUrl;
-          
-          debugPrint('ProfileRemoteDataSource: Image uploaded. Raw URL: $imageUrl');
-          // debugPrint('ProfileRemoteDataSource: Final URL: $finalImageUrl');
-          
-          // Update the athlete's profile with the new image URL
-          try {
-            final athlete = await getProfile(actualAthleteId);
-            final updatedAthlete = athlete.copyWith(profileImageUrl: imageUrl);
-            await updateProfile(updatedAthlete);
-          } catch (e) {
-            debugPrint('ProfileRemoteDataSource: Error updating athlete with new image URL: $e');
-            // Continue and return the URL even if we couldn't update the athlete
-          }
-          
-          return imageUrl;
-        } catch (e) {
-          debugPrint('ProfileRemoteDataSource: Error uploading image to Supabase: $e');
-          throw ServerException(
-            message: 'Failed to upload image: ${e.toString()}', 
-            statusCode: 500
-          );
-        }
       }
+      
+      // Production mode - use Supabase Storage
+      debugPrint('ProfileRemoteDataSource: Uploading profile image for ID: $actualAthleteId');
+      
+      // Format the file path without leading slash
+      final filePath = '${actualAthleteId.trim()}/${fileName.trim()}'.replaceAll('//', '/');
+      debugPrint('ProfileRemoteDataSource: File path: $filePath');
+      
+      // Upload the image to Supabase Storage
+      await supabaseClient
+          .storage
+          .from('athlete-images') // Bucket name
+          .uploadBinary(filePath, imageBytes, fileOptions: const FileOptions(
+            cacheControl: '3600',
+            upsert: true
+          ));
+      
+      // Get a signed URL for the uploaded image (valid for 1 hour)
+      final String imageUrl = await supabaseClient
+          .storage
+          .from('athlete-images')
+          .createSignedUrl(filePath, 3600); // 1 hour expiration
+      
+      debugPrint('ProfileRemoteDataSource: Image uploaded. Signed URL: $imageUrl');
+      
+      // Update the athlete's profile with the new image URL
+      try {
+        final athlete = await getProfile(actualAthleteId);
+        final updatedAthlete = athlete.copyWith(profileImageUrl: imageUrl);
+        await updateProfile(updatedAthlete);
+      } catch (e) {
+        debugPrint('ProfileRemoteDataSource: Error updating athlete with new image URL: $e');
+        // Continue and return the URL even if we couldn't update the athlete
+      }
+      
+      return imageUrl;
     } catch (e) {
       debugPrint('ProfileRemoteDataSource: Error in uploadProfileImage: $e');
       throw ServerException(message: e.toString(), statusCode: 500);
@@ -442,6 +431,89 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (!data.containsKey(field) || data[field] == null) {
         debugPrint('WARNING: Required field missing: $field');
       }
+    }
+  }
+
+  /// Gets the profile image URL for an athlete from Supabase Storage
+  @override
+  Future<String?> getProfileImageUrl(String athleteId) async {
+    try {
+      final bool useMockData = _useMockData;
+      
+      // Handle temporary IDs by getting the actual user ID
+      final bool isTemporaryId = athleteId.startsWith('user-') || 
+                              athleteId == 'unknown-user-id' ||
+                              athleteId == 'new-user';
+      
+      final String actualAthleteId = isTemporaryId
+          ? getCurrentUserId() ?? athleteId
+          : athleteId;
+
+      if (useMockData) {
+        // For mock purposes, return a random image
+        final randomId = DateTime.now().millisecondsSinceEpoch;
+        return 'https://picsum.photos/id/$randomId/200/200';
+      }
+
+      debugPrint('ProfileRemoteDataSource: Fetching profile image URL for ID: $actualAthleteId');
+
+      try {
+        // First try to get the athlete's data to check if they have a profile image
+        final athlete = await getProfile(actualAthleteId);
+        
+        // If they have a profile image URL, extract the file path from it
+        String? filePath;
+        if (athlete.profileImageUrl != null && athlete.profileImageUrl!.isNotEmpty) {
+          // Extract the file path from the URL
+          final uri = Uri.parse(athlete.profileImageUrl!);
+          final pathSegments = uri.pathSegments;
+          // The path should be after 'athlete-images' in the URL
+          final athleteImagesIndex = pathSegments.indexOf('athlete-images');
+          if (athleteImagesIndex >= 0 && athleteImagesIndex < pathSegments.length - 1) {
+            filePath = pathSegments.sublist(athleteImagesIndex + 1).join('/');
+            debugPrint('ProfileRemoteDataSource: Extracted file path: $filePath');
+          }
+        }
+
+        // If we couldn't get the path from the URL, try to list files
+        if (filePath == null) {
+          final List<FileObject> files = await supabaseClient
+              .storage
+              .from('athlete-images')
+              .list(path: actualAthleteId);
+
+          if (files.isEmpty) {
+            debugPrint('ProfileRemoteDataSource: No profile image found for athlete');
+            return null;
+          }
+
+          // Get the most recent image file
+          final latestFile = files.reduce((curr, next) => 
+            (curr.createdAt ?? '').compareTo(next.createdAt ?? '') > 0 ? curr : next);
+          
+          filePath = '$actualAthleteId/${latestFile.name}';
+        }
+
+        // Generate a signed URL
+        final String imageUrl = await supabaseClient
+            .storage
+            .from('athlete-images')
+            .createSignedUrl(filePath, 3600); // 1 hour expiration
+          
+        debugPrint('ProfileRemoteDataSource: Generated signed URL: $imageUrl');
+
+        // Update the athlete's profile with the new URL
+        final updatedAthlete = athlete.copyWith(profileImageUrl: imageUrl);
+        await updateProfile(updatedAthlete);
+
+        return imageUrl;
+      } catch (e) {
+        debugPrint('ProfileRemoteDataSource: Error accessing Supabase storage: $e');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('ProfileRemoteDataSource: Error in getProfileImageUrl: $e');
+      throw ServerException(message: e.toString(), statusCode: 500);
     }
   }
 } 

@@ -192,13 +192,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           );
         } else if (state is ProfileLoaded) {
-          // Show profile page with loaded data
-            debugPrint("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}");
-            
+          debugPrint("ProfileScreen: Rendering ProfilePage with athlete: ${state.athlete}, imageUrl: ${state.imageUrl}");
           return ProfilePage(
             athlete: state.athlete,
-              isOwnProfile: isOwnProfile,
-              onEditPressed: () => _navigateToEditProfile(),
+            isOwnProfile: isOwnProfile,
+            onEditPressed: () => _navigateToEditProfile(),
           );
         } else if (state is ProfileError) {
           // Show error view
@@ -227,8 +225,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
         
-        // Show loading by default
-          debugPrint("ProfileScreen: Rendering default loading view (initial state)");
+        // Show loading by default for initial state only
+        debugPrint("ProfileScreen: Rendering default loading view (initial state)");
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),

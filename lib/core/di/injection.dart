@@ -1,4 +1,5 @@
 import 'package:athlete_alumni/features/athletes/presentation/bloc/filter_athletes_bloc.dart';
+import 'package:athlete_alumni/features/profile/domain/usecases/get_profile_image_url_usecase.dart';
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -83,6 +84,7 @@ Future<void> _initProfile() async {
     getProfileUseCase: sl<GetProfileUseCase>(),
     updateProfileUseCase: sl<UpdateProfileUseCase>(),
     uploadProfileImageUseCase: sl<UploadProfileImageUseCase>(),
+    getProfileImageUrlUseCase: sl<GetProfileImageUrlUseCase>(),
   ));
   
   sl.registerFactory(() => EditProfileBloc(
@@ -100,6 +102,7 @@ Future<void> _initProfile() async {
   sl.registerLazySingleton(() => GetProfileUseCase());
   sl.registerLazySingleton(() => UpdateProfileUseCase(sl<ProfileRepository>()));
   sl.registerLazySingleton(() => UploadProfileImageUseCase(sl<ProfileRepository>()));
+  sl.registerLazySingleton(() => GetProfileImageUrlUseCase(sl<ProfileRepository>()));
   
   // Repository
   sl.registerLazySingleton<ProfileRepository>(() => ProfileRepositoryImpl(
