@@ -8,6 +8,7 @@ import '../../../../core/di/injection.dart';
 import '../../domain/usecases/get_profile_usecase.dart';
 import '../../domain/usecases/update_profile_usecase.dart';
 import '../../domain/usecases/upload_profile_image_usecase.dart';
+import '../../domain/usecases/get_profile_image_url_usecase.dart';
 
 part 'profile_event.dart';
 part 'profile_state.dart';
@@ -16,15 +17,18 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final GetProfileUseCase getProfileUseCase;
   final UpdateProfileUseCase updateProfileUseCase;
   final UploadProfileImageUseCase uploadProfileImageUseCase;
+  final GetProfileImageUrlUseCase getProfileImageUrlUseCase;
   
   ProfileBloc({
     required this.getProfileUseCase,
     required this.updateProfileUseCase,
     required this.uploadProfileImageUseCase,
+    required this.getProfileImageUrlUseCase,
   }) : super(ProfileInitial()) {
     on<GetProfileEvent>(_onGetProfile);
     on<UpdateProfileEvent>(_onUpdateProfile);
     on<UploadProfileImageEvent>(_onUploadProfileImage);
+    on<GetProfileImageUrlEvent>(_onGetProfileImageUrl);
     on<MockProfileLoadedEvent>(_onMockProfileLoaded);
     on<InitializeNewProfileEvent>(_onInitializeNewProfile);
   }
@@ -72,6 +76,9 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         (athlete) {
           debugPrint('ProfileBloc: Successfully loaded profile: ${athlete.email}');
           emit(ProfileLoaded(athlete));
+          
+          // After profile is loaded, fetch the profile image URL
+          add(GetProfileImageUrlEvent(athlete.id));
         },
       );
     } catch (e) {
@@ -106,6 +113,33 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
       (failure) => emit(ProfileImageUploadFailure(failure.message)),
       (imageUrl) => emit(ProfileImageUploadSuccess(imageUrl)),
     );
+  }
+  
+  Future<void> _onGetProfileImageUrl(GetProfileImageUrlEvent event, Emitter<ProfileState> emit) async {
+    try {
+      if (state is! ProfileLoaded) {
+        return; // Only load image URL if we have a loaded profile
+      }
+      
+      final currentState = state as ProfileLoaded;
+      final result = await getProfileImageUrlUseCase(event.athleteId);
+      
+      await result.fold(
+        (failure) {
+          // Just update the current ProfileLoaded state with null URL instead of error
+          emit(currentState.copyWith(imageUrl: null));
+        },
+        (imageUrl) async {
+          // Update the current ProfileLoaded state with the new URL
+          emit(currentState.copyWith(imageUrl: imageUrl));
+        },
+      );
+    } catch (e) {
+      // Just update the current ProfileLoaded state with null URL instead of error
+      if (state is ProfileLoaded) {
+        emit((state as ProfileLoaded).copyWith(imageUrl: null));
+      }
+    }
   }
   
   // Handle mock profile loaded event for development

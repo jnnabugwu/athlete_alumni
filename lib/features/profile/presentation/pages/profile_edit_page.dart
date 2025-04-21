@@ -51,10 +51,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   void initState() {
     super.initState();
     
-    // Debug info for initialization
-    debugPrint('🔍 ProfileEditPage init - Athlete ID: ${widget.athlete.id}');
-    debugPrint('🔍 ProfileEditPage init - Athlete email: "${widget.athlete.email}"');
-    
     // Initialize the upload image bloc
     _uploadImageBloc = sl<UploadImageBloc>();
     
@@ -754,36 +750,6 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Debug section - REMOVE IN PRODUCTION
-        Container(
-          padding: const EdgeInsets.all(8),
-          margin: const EdgeInsets.only(bottom: 16),
-          decoration: BoxDecoration(
-            color: Colors.amber.shade100,
-            border: Border.all(color: Colors.amber.shade700),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'DEBUG INFO',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.amber.shade900,
-                ),
-              ),
-              Text(
-                'Career: ${_selectedCareer.name} (${_selectedCareer.displayName})',
-                style: TextStyle(
-                  color: Colors.amber.shade900,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ],
-          ),
-        ),
-      
         Text(
           'Career Information',
           style: Theme.of(context).textTheme.titleMedium,

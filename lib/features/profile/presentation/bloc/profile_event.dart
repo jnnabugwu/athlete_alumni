@@ -78,3 +78,13 @@ class InitializeNewProfileEvent extends ProfileEvent {
     if (athleteStatus != null) athleteStatus!,
   ];
 }
+
+/// Event to get the profile image URL for an athlete
+class GetProfileImageUrlEvent extends ProfileEvent {
+  final String athleteId;
+  
+  const GetProfileImageUrlEvent(this.athleteId);
+
+  @override
+  List<Object> get props => [athleteId];
+}

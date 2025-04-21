@@ -3,7 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/router/route_constants.dart';
 import '../../core/theme/app_colors.dart';
-import '../../features/auth/presentation/bloc/auth_bloc.dart';
+import '../../features/auth/presentation/bloc/auth_bloc.dart' as app_auth;
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:get_it/get_it.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   const CustomAppBar({Key? key}) : super(key: key);
@@ -13,9 +15,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
+    return BlocBuilder<app_auth.AuthBloc, app_auth.AuthState>(
       builder: (context, state) {
-        final bool isAuthenticated = state.status == AuthStatus.authenticated;
+        final bool isAuthenticated = state.status == app_auth.AuthStatus.authenticated;
         final String? userName = state.athlete?.name;
 
         return AppBar(
@@ -42,28 +44,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
                 offset: const Offset(0, 40),
                 onSelected: (value) {
                   if (value == 'profile') {
-                    // Get the current auth state
-                    final authState = context.read<AuthBloc>().state;
-                    
-                    // Check for athlete ID first, fall back to generating a unique ID if needed
-                    final String profileId = authState.athlete?.id.isNotEmpty == true 
-                        ? authState.athlete!.id
-                        : 'user-${DateTime.now().millisecondsSinceEpoch}';
-                    
-                    debugPrint("AppBar menu: Using profile ID: $profileId (has athlete data: ${authState.athlete != null})");
-                    
-                    // Navigate to the profile with isOwnProfile = true
-                    context.go(
-                      '/profile/$profileId',
-                      extra: {
-                        'isOwnProfile': true,
-                      },
-                    );
+                    _handleProfileTap(context);
                   } else if (value == 'settings') {
                     // Navigate to settings page when implemented
                   } else if (value == 'logout') {
                     // Get the AuthBloc and dispatch logout event
-                    context.read<AuthBloc>().add(const AuthSignedOut());
+                    context.read<app_auth.AuthBloc>().add(const app_auth.AuthSignedOut());
                     
                     // Show message
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -133,6 +119,27 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         );
       },
     );
+  }
+
+  void _handleProfileTap(BuildContext context) {
+    final authBloc = GetIt.I<app_auth.AuthBloc>();
+    final authState = authBloc.state;
+    
+    if (authState.status == app_auth.AuthStatus.authenticated) {
+      // Get the current Supabase user
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      
+      if (currentUser != null) {
+        // If we have a current user, use their ID
+        context.go('/profile/${currentUser.id}');
+      } else {
+        // If somehow we're authenticated but don't have a user, go to login
+        context.go(RouteConstants.login);
+      }
+    } else {
+      // If not authenticated, redirect to login
+      context.go(RouteConstants.login);
+    }
   }
 }
 

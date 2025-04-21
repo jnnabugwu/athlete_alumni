@@ -13,11 +13,23 @@ class ProfileLoading extends ProfileState {}
 
 class ProfileLoaded extends ProfileState {
   final Athlete athlete;
+  final String? imageUrl;
   
-  const ProfileLoaded(this.athlete);
+  const ProfileLoaded(this.athlete, {this.imageUrl});
   
   @override
-  List<Object> get props => [athlete];
+  List<Object> get props => [athlete, imageUrl ?? ''];
+
+  // Create a copy of ProfileLoaded with new imageUrl
+  ProfileLoaded copyWith({
+    Athlete? athlete,
+    String? imageUrl,
+  }) {
+    return ProfileLoaded(
+      athlete ?? this.athlete,
+      imageUrl: imageUrl ?? this.imageUrl,
+    );
+  }
 }
 
 class ProfileError extends ProfileState {

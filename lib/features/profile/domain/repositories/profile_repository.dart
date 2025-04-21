@@ -24,4 +24,10 @@ abstract class ProfileRepository {
     Uint8List imageBytes,
     String fileName,
   );
+
+  /// Gets the profile image URL for an athlete
+  /// 
+  /// Returns either a [Failure] if something went wrong or the URL of the profile image as [String] if successful
+  /// Returns Right(null) if no image exists
+  Future<Either<Failure, String?>> getProfileImageUrl(String athleteId);
 }

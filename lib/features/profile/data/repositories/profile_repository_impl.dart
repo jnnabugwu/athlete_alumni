@@ -70,4 +70,18 @@ class ProfileRepositoryImpl implements ProfileRepository {
       return const Left(NetworkFailure(message: 'No internet connection'));
     }
   }
+
+  @override
+  ResultFuture<String?> getProfileImageUrl(String athleteId) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final imageUrl = await remoteDataSource.getProfileImageUrl(athleteId);
+        return Right(imageUrl);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(message: e.message));
+      }
+    } else {
+      return const Left(NetworkFailure(message: 'No internet connection'));
+    }
+  }
 }
